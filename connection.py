@@ -4,13 +4,12 @@ import time
 import traceback
 
 from builder import add_to_build_queue
-from colors import blue, red
+from colors import blue
+from config import AUTH_TOKEN, PORT
 from jobs import BuildJob, CommitInfo
 from webhook import push_webhook
 
 # create socket, interface with github
-PORT = 8888
-TOKEN = "test"
 
 
 def serve():
@@ -23,12 +22,13 @@ def serve():
     while True:
         try:
             conn, addr = server.accept()
+            conn.settimeout(10)
             print(f"[CONN] New connection from {addr}")
 
             try:
                 token, method = conn.recv(1024).decode().split("|")
-                if token != TOKEN:
-                    print(f"[CONN] Invalid connection, wrong token")
+                if token != AUTH_TOKEN:
+                    print("[CONN] Invalid connection, wrong token")
                     conn.close()
                     continue
 
@@ -43,18 +43,19 @@ def serve():
                         conn.send(b"Invalid input!")
                         conn.close()
                         continue
+
                     print(f"Queuing build for commit {hash}...")
 
                     req = BuildJob(
                         conn,
-                        CommitInfo(hash, author, name, run_id),
                         "PENDING",
                         time.time(),
+                        CommitInfo(hash, author, name, run_id),
                     )
                     add_to_build_queue(req)
                     push_webhook()
-                elif method == "build-target":
-                    conn.send(b"Building target design\n")
+                elif method == "attack-target":
+                    conn.send(b"Uploading target design\n")
                     # TODO
 
             except Exception:

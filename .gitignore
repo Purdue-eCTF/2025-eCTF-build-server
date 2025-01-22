@@ -4,3 +4,5 @@ config.py
 2025-eCTF-design
 __pycache__
 builds
+venv
+id_ed25519*

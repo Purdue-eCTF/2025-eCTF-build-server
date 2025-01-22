@@ -11,18 +11,26 @@ class CommitInfo:
 
 
 @dataclass
-class BuildJob:
+class Job:
     conn: socket
-    commit: CommitInfo
     status: str
     start_time: float
+
+    def to_json(self):
+        return "{}"
+
+    def log(self, msg: str):
+        print(msg)
+        self.conn.send(msg.encode() + b"\n")
 
 
 @dataclass
-class DistributionJob:
-    conn: socket
+class BuildJob(Job):
+    commit: CommitInfo
+
+
+@dataclass
+class DistributionJob(Job):
     name: str
     in_path: str
     out_path: str
-    status: str
-    start_time: float
