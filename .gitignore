@@ -1,2 +1,6 @@
 config.py
 .vscode
+.DS_Store
+2025-eCTF-design
+__pycache__
+builds
