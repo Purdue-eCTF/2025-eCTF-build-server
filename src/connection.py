@@ -1,5 +1,6 @@
 import re
 import socket
+import sys
 import time
 import traceback
 
@@ -18,6 +19,7 @@ def serve():
     server.listen()
 
     print(blue(f"[CONN] Listening on port {PORT}..."))
+    sys.stdout.flush()
 
     while True:
         try:

@@ -1,0 +1,22 @@
+services:
+    ectf_build:
+        container_name: ectf_build_server
+        build:
+            dockerfile: ./Dockerfile
+            context: .
+            args:
+                GITHUB_LOGIN: ${GITHUB_LOGIN}
+        ports:
+            - "8888:8888"
+        restart: always
+
+    ssh-server:
+        image: linuxserver/openssh-server
+        environment:
+            - PUBLIC_KEY_FILE=./id_ed25519.pub
+        volumes:
+            - config:/config
+        ports:
+            - 2222:2222
+volumes:
+    config:

@@ -2,11 +2,11 @@ import socket
 import sys
 
 conn = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-conn.connect(("localhost", 8888))
+conn.connect(("localhost", 8889))
 
-conn.send(b"build-ours|test")
+conn.send(b"test|build-ours")
 print(conn.recv(1024).decode())
-conn.send(f"4a98b591453bfd4346edfd89ccfdfc15816d478c|author|name|run_id".encode())
+conn.send(f"f3496314afb4f91519e104b962febd8d67b4d6b1|author|name|run_id".encode())
 
 while True:
     buf = conn.recv(1024)

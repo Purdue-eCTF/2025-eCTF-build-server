@@ -1,4 +1,4 @@
-config.py
+**/config.py
 .vscode
 .DS_Store
 2025-eCTF-design

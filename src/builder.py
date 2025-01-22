@@ -1,5 +1,6 @@
 import os
 import subprocess
+import sys
 import time
 import traceback
 from queue import Queue
@@ -61,6 +62,7 @@ def build(job: BuildJob):
                 "cd 2025-eCTF-design &&"
                 "rm -rf secrets &&"
                 "mkdir secrets &&"
+                ". ./.venv/bin/activate &&"
                 "python -m ectf25_design.gen_secrets secrets/secrets.json 1 2 3 4",
                 shell=True,
                 check=True,
@@ -69,12 +71,14 @@ def build(job: BuildJob):
             )
             job.conn.send(output.stdout)
             job.conn.send(output.stderr)
-        except Exception:
+        except subprocess.CalledProcessError as e:
             job.log(
                 red(
                     f"[BUILD] Failed to build commit {job.commit.hash}! Failed to build secrets!"
                 )
             )
+            job.conn.send(e.stdout)
+            job.conn.send(e.stderr)
             job.log(red(traceback.format_exc()))
             job.conn.send(b"%*&1\n")
             job.conn.close()
@@ -84,7 +88,7 @@ def build(job: BuildJob):
         # build decoder
         try:
             output = subprocess.run(
-                "cd 2025-eCTF-design &&" "./build.sh &&" "[ -d build_out ]",
+                "cd 2025-eCTF-design && echo $PWD && " "./build.sh &&" "[ -d build_out ]",
                 shell=True,
                 check=True,
                 stdout=subprocess.PIPE,
@@ -92,21 +96,35 @@ def build(job: BuildJob):
             )
             job.conn.send(output.stdout)
             job.conn.send(output.stderr)
-        except Exception:
+        except subprocess.CalledProcessError as e:
             job.log(
                 red(f"[BUILD] Failed to build commit {job.commit.hash}! Build failed!")
             )
+            job.conn.send(e.stdout)
+            job.conn.send(e.stderr)
             job.log(red(traceback.format_exc()))
             job.conn.send(b"%*&1\n")
             job.conn.close()
             return
 
         # output in build_out
-        subprocess.run(
-            f"cd 2025-eCTF-design && mv build_out ../builds/{job.commit.hash}",
-            shell=True,
-            check=True,
-        )
+        try:
+            subprocess.run(
+                f"cd 2025-eCTF-design && mv build_out ../builds/{job.commit.hash}",
+                shell=True,
+                check=True,
+            )
+        except subprocess.CalledProcessError as e:
+            job.log(
+                red(f"[BUILD] Failed to build commit {job.commit.hash}! Build failed!")
+            )
+            job.conn.send(e.stdout)
+            job.conn.send(e.stderr)
+            job.log(red(traceback.format_exc()))
+            job.conn.send(b"%*&1\n")
+            job.conn.close()
+            return
+
         job.log(blue(f"[BUILD] Built {job.commit.hash}!"))
 
         # send success
@@ -141,7 +159,9 @@ def init_build_queue():
     # login into github
     if (
         subprocess.run(
-            ["gh", "auth", "status"], stdout=subprocess.PIPE, stderr=subprocess.PIPE
+            ["gh", "auth", "status"],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
         ).returncode
         != 0
     ):
@@ -163,7 +183,7 @@ def init_build_queue():
         except Exception:
             print(red("[BUILD] Failed to set up git!"))
             print(red(traceback.format_exc()))
-            os._exit(1)
+            sys.exit(1)
             return
 
     # pull repo
@@ -186,14 +206,14 @@ def init_build_queue():
             "python -m pip install ./tools/ &&"
             "python -m pip install -e ./design/",
             shell=True,
-            check=True,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
+            check=True,
         )
     except Exception:
         print(red("[BUILD] Failed to create venv!"))
         print(traceback.format_exc())
-        os._exit(1)
+        sys.exit(1)
         return
 
     subprocess.run(["rm", "-rf", "./builds"])

@@ -47,6 +47,7 @@ def distribute(job: DistributionJob, ip: str):
 
     # sh.run_cmd(f"rm -rf 2024-ectf-secure-example/build/{job.out_path}")
 
+    # run tests
     job.log(blue(f"[DIST] Uploaded! Running tests for {job.name}\n"))
     # TODO
     """
@@ -92,15 +93,15 @@ def distribution_loop():
 
 def init_distribution_queue():
     # setup ssh
-    subprocess.run("mkdir -p ~/.ssh", shell=True, check=True)
-    subprocess.run("rm ~/.ssh/config", shell=True, check=True)
+    # subprocess.run("mkdir -p ~/.ssh", shell=True, check=True)
+    # subprocess.run("rm -f ~/.ssh/config", shell=True, check=True)
 
     for ip in IPS:
-        subprocess.run(
+        """subprocess.run(
             f"echo 'Host {ip.split("@")[1]}\nProxyCommand $(which cloudflared) access ssh --hostname %h\n' >> ~/.ssh/config",
             shell=True,
             check=True,
-        )
+        )"""
         upload_status[ip] = TestServerStatus()
     push_webhook()
     print(blue(f"Loaded {len(IPS)} ips"))
