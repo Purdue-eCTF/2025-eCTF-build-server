@@ -6,6 +6,8 @@ def flash(infile: str, ip: str) -> bool:
     """
         infile: path to file to flash
         ip: hostname of server to flash to (eg: ectf@pi.neilhommes.xyz)
+        
+        returns True if the upload and flash was successful, False otherwise.
     """
     print("Uploading files to ectf server")
 
@@ -40,7 +42,7 @@ def flash(infile: str, ip: str) -> bool:
             ],
             check=True,
         )
-    except:
+    except subprocess.SubprocessError:
         print(f"Failed to flash on {ip}")
         return False
 
