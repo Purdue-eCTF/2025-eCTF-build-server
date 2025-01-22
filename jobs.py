@@ -20,5 +20,9 @@ class BuildJob:
 
 @dataclass
 class DistributionJob:
-    path: str
     conn: socket
+    name: str
+    in_path: str
+    out_path: str
+    status: str
+    start_time: float

@@ -1,5 +1,7 @@
 import requests
 
+from distribution import distribution_queue, upload_status
+
 
 def push_webhook(update_type: str = "QUEUE", update_state: ActionResult = None):
     requests.post(
@@ -18,11 +20,11 @@ def push_webhook(update_type: str = "QUEUE", update_state: ActionResult = None):
                     {
                         "ip": ip,
                         "locked": stat.locked,
-                        "active": stat.result.to_json() if stat.result else None,
+                        "active": stat.job.to_json() if stat.job else None,
                     }
                     for ip, stat in upload_status.items()
                 ],
-                "queue": [action.to_json() for action in upload_queue],
+                "queue": [action.to_json() for action in distribution_queue],
             },
         },
         headers={"content-type": "application/json"},

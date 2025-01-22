@@ -1,7 +1,7 @@
 import re
 import socket
-import threading
 import time
+import traceback
 
 from builder import add_to_build_queue
 from jobs import BuildJob, CommitInfo
@@ -9,7 +9,7 @@ from webhook import push_webhook
 
 # create socket, interface with github
 PORT = 8888
-TOKEN = "095135e51d96ce869ec57abbf0d1dcb9897cf4de39752ea0b2c48eed8571fd55"
+TOKEN = "test"
 
 
 def serve():
@@ -30,6 +30,7 @@ def serve():
                     hash, author, name, run_id = (
                         conn.recv(1024).decode("utf-8").split("|")
                     )
+
                     if len(hash) > 40 or len(hash) < 7 or re.search("[^0-9a-f]", hash):
                         conn.send(b"Invalid input!")
                         conn.close()
@@ -47,9 +48,9 @@ def serve():
                 elif method == "build-target":
                     conn.send(b"Building target design\n")
                     # TODO
-                    pass
 
-            except Exception as e:
+            except Exception:
+                traceback.print_exc()
                 conn.close()
                 continue
 
