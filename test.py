@@ -6,7 +6,9 @@ conn.connect(("localhost", 8888))
 
 conn.send(b"test|build-ours")
 print(conn.recv(1024).decode())
-conn.send(f"aa22e6bd84dd79993bd0a4256d9fcbbbda548ca6|author|name|run_id".encode())
+conn.send(
+    f"aa22e6bd84dd79993bd0a4256d9fcbbbda548ca6|author|{sys.argv[1] if len(sys.argv) > 1 else "name"}|run_id".encode()
+)
 
 while True:
     buf = conn.recv(1024)

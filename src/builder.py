@@ -1,4 +1,3 @@
-import os
 import subprocess
 import sys
 import time
@@ -10,8 +9,9 @@ from colors import blue, red
 from config import GITHUB_TOKEN
 from distribution import add_to_dist_queue
 from jobs import BuildJob, DistributionJob
+from webhook import push_webhook
 
-BUILD_QUEUE = Queue()
+BUILD_QUEUE: Queue[BuildJob] = Queue()
 active_build: BuildJob | None = None
 
 
@@ -21,15 +21,16 @@ def add_to_build_queue(job: BuildJob):
     :param job: The job to add
     """
     BUILD_QUEUE.put(job)
-    pass
 
 
 def build(job: BuildJob):
     global active_build
     active_build = job
+    job.status = "BUILDING"
+    push_webhook("BUILD", job)
 
     try:
-        job.log(blue(f"[BUILD] Pulling from repo..."))
+        job.log(blue("[BUILD] Pulling from repo..."))
         # pull from repo
         try:
             output = subprocess.run(
@@ -52,9 +53,12 @@ def build(job: BuildJob):
             job.log(red(traceback.format_exc()))
             job.conn.send(b"%*&1\n")
             job.conn.close()
+
+            job.status = "FAILED"
+            push_webhook("BUILD", job)
             return
 
-        job.log(blue(f"[BUILD] Building secrets..."))
+        job.log(blue("[BUILD] Building secrets..."))
         # build secrets
         try:
             # todo: change active channels
@@ -82,6 +86,9 @@ def build(job: BuildJob):
             job.log(red(traceback.format_exc()))
             job.conn.send(b"%*&1\n")
             job.conn.close()
+
+            job.status = "FAILED"
+            push_webhook("BUILD", job)
             return
 
         job.log(blue(f"[BUILD] Building decoder..."))
@@ -106,12 +113,15 @@ def build(job: BuildJob):
             job.log(red(traceback.format_exc()))
             job.conn.send(b"%*&1\n")
             job.conn.close()
+
+            job.status = "FAILED"
+            push_webhook("BUILD", job)
             return
 
         # output in build_out
         try:
             subprocess.run(
-                f"cd 2025-eCTF-design && mv build_out ../builds/{job.commit.hash}",
+                f"cd 2025-eCTF-design && rm -rf ../builds/{job.commit.hash} && mv build_out ../builds/{job.commit.hash}",
                 shell=True,
                 check=True,
             )
@@ -124,9 +134,15 @@ def build(job: BuildJob):
             job.log(red(traceback.format_exc()))
             job.conn.send(b"%*&1\n")
             job.conn.close()
+
+            job.status = "FAILED"
+            push_webhook("BUILD", job)
             return
 
         job.log(blue(f"[BUILD] Built {job.commit.hash}!"))
+
+        active_build = None
+        push_webhook()
 
         add_to_dist_queue(
             DistributionJob(
@@ -136,6 +152,7 @@ def build(job: BuildJob):
                 job.commit.hash,
                 f"./builds/{job.commit.hash}",
                 job.commit.hash,
+                job.commit,
             )
         )
     finally:
@@ -147,7 +164,10 @@ def build_loop():
         job = BUILD_QUEUE.get()
         try:
             build(job)
+        except (BrokenPipeError, TimeoutError):
+            print(red("[BUILD] Client disconnected"))
         except Exception:  # error handling :tm:
+            push_webhook("BUILD", job)
             traceback.print_exc()
 
 

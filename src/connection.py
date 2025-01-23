@@ -15,7 +15,7 @@ from webhook import push_webhook
 
 def serve():
     server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    server.bind(("0.0.0.0", PORT))
+    server.bind(("0.0.0.0", PORT))  # noqa: S104
     server.listen()
 
     print(blue(f"[CONN] Listening on port {PORT}..."))

@@ -9,6 +9,14 @@ class CommitInfo:
     message: str
     run_id: str
 
+    def to_json(self):
+        return {
+            "hash": self.hash,
+            "name": self.message,
+            "author": self.author,
+            "runId": self.run_id,
+        }
+
 
 @dataclass
 class Job:
@@ -17,7 +25,7 @@ class Job:
     start_time: float
 
     def to_json(self):
-        return "{}"
+        return {}
 
     def log(self, msg: str):
         print(msg)
@@ -28,9 +36,24 @@ class Job:
 class BuildJob(Job):
     commit: CommitInfo
 
+    def to_json(self):
+        return {
+            "result": self.status,
+            "actionStart": round(self.start_time),
+            "commit": self.commit.to_json(),
+        }
+
 
 @dataclass
 class DistributionJob(Job):
     name: str
     in_path: str
     out_path: str
+    commit: CommitInfo | None = None
+
+    def to_json(self):
+        return {
+            "result": self.status,
+            "actionStart": round(self.start_time),
+            "commit": self.commit and self.commit.to_json(),
+        }

@@ -28,16 +28,15 @@ def add_to_dist_queue(job: DistributionJob):
 
 
 def distribute(job: DistributionJob, ip: str):
-    job.log(blue(f"[DIST] Uploading {job.name} to {ip}"))
-
     path = f"~/ectf2025/build_out/{job.out_path}"
     venv = ". ~/ectf2025/.venv/bin/activate"
     update_script = "~/ectf2025/CI/update"
 
     try:
+        job.log(blue(f"[DIST] Uploading {job.name} to {ip}"))
+
         # upload to server
         try:
-            # TODO
             subprocess.run(
                 f'rsync --rsh="ssh -i id_ed25519 -o StrictHostKeyChecking=accept-new" -av --progress --delete --ignore-times'
                 f" {job.in_path}/max78000.bin {ip}:{path}",
@@ -98,6 +97,8 @@ def distribute(job: DistributionJob, ip: str):
         job.status = "SUCCESS"
         # job.time = time.time()
         push_webhook("TEST", job)
+    except (BrokenPipeError, TimeoutError):
+        print(red("[DIST] Client disconnected"))
     finally:
         upload_status[ip].job = None
         server_queue.put(ip)
