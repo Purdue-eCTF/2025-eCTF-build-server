@@ -4,11 +4,14 @@ services:
         build:
             dockerfile: ./Dockerfile
             context: .
-            args:
-                GITHUB_LOGIN: ${GITHUB_LOGIN}
         ports:
             - "8888:8888"
         restart: always
+        volumes:
+            - /var/run/docker.sock:/var/run/docker.sock
+            - 2025-eCTF-design:/root/src/2025-eCTF-design
+            - build_out:/root/src/build_out
+            - secrets:/root/src/secrets
 
     ssh-server:
         image: linuxserver/openssh-server
@@ -17,6 +20,9 @@ services:
         volumes:
             - config:/config
         ports:
-            - 2222:2222
+            - 22:2222
 volumes:
     config:
+    2025-eCTF-design:
+    build_out:
+    secrets:

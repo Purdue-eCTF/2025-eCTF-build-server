@@ -88,7 +88,8 @@ def build(job: BuildJob):
         # build decoder
         try:
             output = subprocess.run(
-                "cd 2025-eCTF-design && echo $PWD && " "./build.sh &&" "[ -d build_out ]",
+                "cd 2025-eCTF-design && ./build.sh && "
+                '[ -n "$(ls -A build_out 2>/dev/null)" ]',
                 shell=True,
                 check=True,
                 stdout=subprocess.PIPE,
@@ -127,10 +128,6 @@ def build(job: BuildJob):
 
         job.log(blue(f"[BUILD] Built {job.commit.hash}!"))
 
-        # send success
-        job.conn.send(b"%*&0\n")
-        job.conn.close()
-
         add_to_dist_queue(
             DistributionJob(
                 job.conn,
@@ -138,7 +135,7 @@ def build(job: BuildJob):
                 time.time(),
                 job.commit.hash,
                 f"./builds/{job.commit.hash}",
-                "out_path",
+                job.commit.hash,
             )
         )
     finally:
@@ -148,7 +145,10 @@ def build(job: BuildJob):
 def build_loop():
     while True:
         job = BUILD_QUEUE.get()
-        build(job)
+        try:
+            build(job)
+        except Exception:  # error handling :tm:
+            traceback.print_exc()
 
 
 def init_build_queue():

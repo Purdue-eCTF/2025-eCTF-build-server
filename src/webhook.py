@@ -8,6 +8,7 @@ def push_webhook(update_type: str = "QUEUE", update_state: Job | None = None):
     from builder import BUILD_QUEUE, active_build
     from distribution import distribution_queue, upload_status
 
+    return
     requests.post(
         WEBHOOK_IP,
         json={
@@ -30,7 +31,7 @@ def push_webhook(update_type: str = "QUEUE", update_state: Job | None = None):
                     }
                     for ip, stat in upload_status.items()
                 ],
-                "queue": [action.to_json() for action in distribution_queue],
+                "queue": [action.to_json() for action in list(distribution_queue.queue)],
             },
         },
         headers={"content-type": "application/json"},

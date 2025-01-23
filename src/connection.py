@@ -68,4 +68,6 @@ def serve():
             #  threading.Thread(target=check_close, args=(req,), daemon=True).start()
 
         except KeyboardInterrupt:
+            server.shutdown(socket.SHUT_RDWR)
+            server.close()
             break
