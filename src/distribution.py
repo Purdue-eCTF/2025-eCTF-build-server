@@ -9,7 +9,7 @@ from queue import Queue
 
 from colors import blue, red
 from config import IPS
-from jobs import DistributionJob, set_active_status
+from jobs import DistributionJob
 from webhook import push_webhook
 
 distribution_queue: Queue[DistributionJob] = Queue()
@@ -35,7 +35,7 @@ def distribute(job: DistributionJob, ip: str):
     update_script = "~/ectf2025/CI/update"
 
     job.status = "TESTING"
-    set_active_status(job)
+    push_webhook("TEST", job)
 
     try:
         # upload to server

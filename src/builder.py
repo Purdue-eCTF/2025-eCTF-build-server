@@ -10,7 +10,7 @@ from threading import Thread
 from colors import blue, red
 from config import DESIGN_REPO, GITHUB_TOKEN
 from distribution import add_to_dist_queue
-from jobs import BuildJob, DistributionJob, set_active_status
+from jobs import BuildJob, DistributionJob
 from webhook import push_webhook
 
 BUILD_QUEUE: Queue[BuildJob] = Queue()
@@ -27,9 +27,7 @@ def add_to_build_queue(job: BuildJob):
 
 def build(job: BuildJob):
     global active_build
-    global active_status
     active_build = job
-    set_active_status(job)
     job.status = "BUILDING"
     push_webhook("BUILD", job)
 

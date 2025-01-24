@@ -1,13 +1,18 @@
 import requests
 
 from config import WEBHOOK_IP
-from jobs import Job, active_status
+from jobs import Job
+
+active_status: Job | None = None
 
 
 def push_webhook(update_type: str = "QUEUE", update_state: Job | None = None):
     from builder import BUILD_QUEUE, active_build
     from distribution import distribution_queue, upload_status
 
+    if update_state is not None:
+        global active_status
+        active_status = update_state
     requests.post(
         WEBHOOK_IP,
         json={

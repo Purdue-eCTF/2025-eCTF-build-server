@@ -57,11 +57,3 @@ class DistributionJob(Job):
             "actionStart": round(self.start_time),
             "commit": self.commit and self.commit.to_json(),
         }
-
-
-active_status: Job | None = None
-
-
-def set_active_status(job: Job):
-    global active_status
-    active_status = job
