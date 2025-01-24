@@ -9,7 +9,7 @@ from queue import Queue
 
 from colors import blue, red
 from config import IPS
-from jobs import DistributionJob
+from jobs import DistributionJob, set_active_status
 from webhook import push_webhook
 
 distribution_queue: Queue[DistributionJob] = Queue()
@@ -33,6 +33,9 @@ def distribute(job: DistributionJob, ip: str):
     path = "~/ectf2025/build_out/"
     venv = ". ~/ectf2025/.venv/bin/activate"
     update_script = "~/ectf2025/CI/update"
+
+    job.status = "TESTING"
+    set_active_status(job)
 
     try:
         # upload to server
@@ -111,7 +114,6 @@ def distribute(job: DistributionJob, ip: str):
             print(f"Tests failed for {job.name}")
             job.conn.send(b"%*&1\n")
             job.status = "FAILED"
-            job.time = time.time()
             push_webhook("TEST", job)
             return
         """
@@ -119,14 +121,13 @@ def distribute(job: DistributionJob, ip: str):
         job.conn.send(b"%*&0\n")
         job.conn.close()
         job.status = "SUCCESS"
-        # job.time = time.time()
         push_webhook("TEST", job)
     except (BrokenPipeError, TimeoutError):
         print(red("[DIST] Client disconnected"))
     finally:
-        shutil.rmtree(job.in_path)
         upload_status[ip].job = None
         server_queue.put(ip)
+        shutil.rmtree(job.in_path)
 
 
 def distribution_loop():

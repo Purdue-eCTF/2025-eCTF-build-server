@@ -1,7 +1,7 @@
 import requests
 
 from config import WEBHOOK_IP
-from jobs import Job
+from jobs import Job, active_status
 
 
 def push_webhook(update_type: str = "QUEUE", update_state: Job | None = None):
@@ -15,6 +15,7 @@ def push_webhook(update_type: str = "QUEUE", update_state: Job | None = None):
                 "type": update_type,
                 "state": update_state.to_json() if update_state else None,
             },
+            "status": active_status.status if active_status else None,
             "build": {
                 "active": active_build.to_json() if active_build else None,
                 "queue": [

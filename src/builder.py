@@ -10,7 +10,7 @@ from threading import Thread
 from colors import blue, red
 from config import DESIGN_REPO, GITHUB_TOKEN
 from distribution import add_to_dist_queue
-from jobs import BuildJob, DistributionJob
+from jobs import BuildJob, DistributionJob, set_active_status
 from webhook import push_webhook
 
 BUILD_QUEUE: Queue[BuildJob] = Queue()
@@ -27,7 +27,9 @@ def add_to_build_queue(job: BuildJob):
 
 def build(job: BuildJob):
     global active_build
+    global active_status
     active_build = job
+    set_active_status(job)
     job.status = "BUILDING"
     push_webhook("BUILD", job)
 
@@ -142,7 +144,7 @@ def build(job: BuildJob):
         # output in build_out
         try:
             subprocess.run(
-                f"cd 2025-eCTF-design && rm -rf ../builds/{job.commit.hash} && mkdir -p ../builds/{job.commit.hash} && cp -r build_out/* ../builds/{job.commit.hash}",
+                f"cd 2025-eCTF-design && rm -rf ../builds/{job.commit.run_id} && mkdir -p ../builds/{job.commit.run_id} && cp -r build_out/* ../builds/{job.commit.run_id}",
                 shell=True,
                 check=True,
             )
@@ -171,7 +173,7 @@ def build(job: BuildJob):
                 "PENDING",
                 time.time(),
                 job.commit.hash,
-                f"./builds/{job.commit.hash}",
+                f"./builds/{job.commit.run_id}",
                 job.commit.hash,
                 job.commit,
             )
