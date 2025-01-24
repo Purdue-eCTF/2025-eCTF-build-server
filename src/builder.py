@@ -6,7 +6,7 @@ from queue import Queue
 from threading import Thread
 
 from colors import blue, red
-from config import GITHUB_TOKEN
+from config import DESIGN_REPO, GITHUB_TOKEN
 from distribution import add_to_dist_queue
 from jobs import BuildJob, DistributionJob
 from webhook import push_webhook
@@ -35,9 +35,9 @@ def build(job: BuildJob):
         try:
             output = subprocess.run(
                 "cd 2025-eCTF-design &&"
-                "git reset --hard &&"
                 "git checkout main &&"
-                "git pull &&"
+                "git fetch &&"
+                "git reset --hard origin/main &&"
                 f"git checkout {job.commit.hash}",
                 shell=True,
                 check=True,
@@ -81,8 +81,8 @@ def build(job: BuildJob):
                     f"[BUILD] Failed to build commit {job.commit.hash}! Failed to build secrets!"
                 )
             )
-            job.conn.send(e.stdout)
-            job.conn.send(e.stderr)
+            job.conn.send(e.stdout or b"")
+            job.conn.send(e.stderr or b"")
             job.log(red(traceback.format_exc()))
             job.conn.send(b"%*&1\n")
             job.conn.close()
@@ -99,6 +99,7 @@ def build(job: BuildJob):
                 '[ -n "$(ls -A build_out 2>/dev/null)" ]',
                 shell=True,
                 check=True,
+                timeout=60 * 5,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
             )
@@ -108,8 +109,8 @@ def build(job: BuildJob):
             job.log(
                 red(f"[BUILD] Failed to build commit {job.commit.hash}! Build failed!")
             )
-            job.conn.send(e.stdout)
-            job.conn.send(e.stderr)
+            job.conn.send(e.stdout or b"")
+            job.conn.send(e.stderr or b"")
             job.log(red(traceback.format_exc()))
             job.conn.send(b"%*&1\n")
             job.conn.close()
@@ -129,8 +130,8 @@ def build(job: BuildJob):
             job.log(
                 red(f"[BUILD] Failed to build commit {job.commit.hash}! Build failed!")
             )
-            job.conn.send(e.stdout)
-            job.conn.send(e.stderr)
+            job.conn.send(e.stdout or b"")
+            job.conn.send(e.stderr or b"")
             job.log(red(traceback.format_exc()))
             job.conn.send(b"%*&1\n")
             job.conn.close()
@@ -209,7 +210,12 @@ def init_build_queue():
     # pull repo
     if (
         subprocess.run(
-            ["git", "clone", "https://github.com/Purdue-eCTF/2025-eCTF-design"],
+            [
+                "git",
+                "clone",
+                DESIGN_REPO,
+                "2025-eCTF-design",
+            ],
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
         ).returncode
@@ -226,6 +232,7 @@ def init_build_queue():
             "python -m pip install ./tools/ &&"
             "python -m pip install -e ./design/",
             shell=True,
+            timeout=60,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
             check=True,

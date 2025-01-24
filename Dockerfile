@@ -1,7 +1,6 @@
 FROM docker:27-dind
 
-RUN apk update && apk upgrade
-RUN apk add github-cli python3 py3-pip openssh-client rsync
+RUN apk update && apk upgrade && apk add github-cli python3 py3-pip openssh-client rsync cloudflared
 
 RUN pip install wheel --break-system-packages && pip install colorama requests --break-system-packages
 

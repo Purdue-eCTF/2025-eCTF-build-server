@@ -1,3 +1,4 @@
+import shutil
 import subprocess
 import threading
 import time
@@ -28,7 +29,7 @@ def add_to_dist_queue(job: DistributionJob):
 
 
 def distribute(job: DistributionJob, ip: str):
-    path = f"~/ectf2025/build_out/{job.out_path}"
+    path = "~/ectf2025/build_out/"
     venv = ". ~/ectf2025/.venv/bin/activate"
     update_script = "~/ectf2025/CI/update"
 
@@ -38,8 +39,9 @@ def distribute(job: DistributionJob, ip: str):
         # upload to server
         try:
             subprocess.run(
-                f'rsync --rsh="ssh -i id_ed25519 -o StrictHostKeyChecking=accept-new" -av --progress --delete --ignore-times'
-                f" {job.in_path}/max78000.bin {ip}:{path}",
+                f'rsync --rsh="ssh -F ssh_config -i id_ed25519 -o StrictHostKeyChecking=accept-new" -av --progress --delete --ignore-times'
+                f" {job.in_path}/ {ip}:{path}",
+                timeout=60 * 2,
                 shell=True,
                 check=True,
             )
@@ -54,6 +56,8 @@ def distribute(job: DistributionJob, ip: str):
             subprocess.run(
                 [
                     "ssh",
+                    "-F",
+                    "ssh_config",
                     "-i",
                     "id_ed25519",
                     "-o",
@@ -61,6 +65,7 @@ def distribute(job: DistributionJob, ip: str):
                     ip,
                     f"{venv} && {update_script} {path}/max78000.bin && rm -rf {path}",
                 ],
+                timeout=60 * 2,
                 check=True,
             )
         except subprocess.SubprocessError:
@@ -69,8 +74,6 @@ def distribute(job: DistributionJob, ip: str):
             job.conn.send(b"%*&1\n")
             job.conn.close()
             return
-
-        # sh.run_cmd(f"rm -rf 2024-ectf-secure-example/build/{job.out_path}")
 
         # run tests
         job.log(blue(f"[DIST] Uploaded! Running tests for {job.name}\n"))
@@ -100,6 +103,7 @@ def distribute(job: DistributionJob, ip: str):
     except (BrokenPipeError, TimeoutError):
         print(red("[DIST] Client disconnected"))
     finally:
+        shutil.rmtree(job.in_path)
         upload_status[ip].job = None
         server_queue.put(ip)
 
@@ -121,17 +125,14 @@ def distribution_loop():
 
 def init_distribution_queue():
     # setup ssh
-    # subprocess.run("mkdir -p ~/.ssh", shell=True, check=True)
-    # subprocess.run("rm -f ~/.ssh/config", shell=True, check=True)
 
-    for ip in IPS:
-        """subprocess.run(
-            f"echo 'Host {ip.split("@")[1]}\nProxyCommand $(which cloudflared) access ssh --hostname %h\n' >> ~/.ssh/config",
-            shell=True,
-            check=True,
-        )"""
-        upload_status[ip] = TestServerStatus()
-        server_queue.put(ip)
+    with open("ssh_config", "w") as f:
+        for ip in IPS:
+            f.write(
+                f"Host {ip.split("@")[1]}\nProxyCommand cloudflared access ssh --hostname %h\n"
+            )
+            upload_status[ip] = TestServerStatus()
+            server_queue.put(ip)
     push_webhook()
     print(blue(f"Loaded {len(IPS)} ips"))
 

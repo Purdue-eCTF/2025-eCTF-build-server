@@ -8,7 +8,6 @@ def push_webhook(update_type: str = "QUEUE", update_state: Job | None = None):
     from builder import BUILD_QUEUE, active_build
     from distribution import distribution_queue, upload_status
 
-    return
     requests.post(
         WEBHOOK_IP,
         json={
