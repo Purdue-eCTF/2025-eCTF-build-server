@@ -29,6 +29,7 @@ def build(job: BuildJob):
     global active_build
     active_build = job
     job.status = "BUILDING"
+    job.start_time = time.time()
     push_webhook("BUILD", job)
 
     try:

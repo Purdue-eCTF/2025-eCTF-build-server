@@ -35,6 +35,7 @@ def distribute(job: DistributionJob, ip: str):
     update_script = "~/ectf2025/CI/update"
 
     job.status = "TESTING"
+    job.start_time = time.time()
     push_webhook("TEST", job)
 
     try:
@@ -65,6 +66,9 @@ def distribute(job: DistributionJob, ip: str):
             job.log(red(traceback.format_exc()))
             job.conn.send(b"%*&1\n")
             job.conn.close()
+
+            job.status = "FAILED"
+            push_webhook("TEST", job)
             return
 
         # flash binary
@@ -97,6 +101,9 @@ def distribute(job: DistributionJob, ip: str):
             job.log(red(traceback.format_exc()))
             job.conn.send(b"%*&1\n")
             job.conn.close()
+
+            job.status = "FAILED"
+            push_webhook("TEST", job)
             return
 
         # run tests
