@@ -50,7 +50,6 @@ def distribute(job: DistributionJob, ip: str):
                     f"{ip}:{path}",
                 ],
                 timeout=60 * 2,
-                shell=True,
                 check=True,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
