@@ -103,7 +103,7 @@ def build(job: BuildJob):
                 # ectf_build_server_secrets is volume mounted to ~/mounts/secrets which is symlinked to ~/src/2025-eCTF-design/secrets
                 output = subprocess.run(
                     "cd 2025-eCTF-design && cp -r decoder/* ~/mounts/decoder && rm -rf build_out/* &&"
-                    "(cd decoder; docker build -t decoder .; "
+                    "(cd decoder && docker build -t decoder . && "
                     "docker run --rm -v ectf_build_server_build_out:/build_out -v ectf_build_server_decoder:/decoder -v ectf_build_server_secrets:/secrets -e DECODER_ID=0xdeadbeef decoder;) &&"
                     '[ -n "$(ls -A build_out 2>/dev/null)" ]',
                     shell=True,
