@@ -34,4 +34,5 @@ def push_webhook(update_type: str = "QUEUE", update_state: Job | None = None):
             },
         },
         headers={"content-type": "application/json"},
+        timeout=15,
     )

@@ -1,3 +1,4 @@
+# ruff: noqa: S607, UP022
 import shutil
 import subprocess
 import threading
@@ -34,26 +35,40 @@ def distribute(job: DistributionJob, ip: str):
     update_script = "~/ectf2025/CI/update"
 
     try:
-        job.log(blue(f"[DIST] Uploading {job.name} to {ip}"))
-
         # upload to server
+        job.log(blue(f"[DIST] Uploading {job.name} to {ip}"))
         try:
             subprocess.run(
-                f'rsync --rsh="ssh -F ssh_config -i id_ed25519 -o StrictHostKeyChecking=accept-new" -av --progress --delete --ignore-times'
-                f" {job.in_path}/ {ip}:{path}",
+                [
+                    "rsync",
+                    "--rsh=ssh -F ssh_config -i id_ed25519 -o StrictHostKeyChecking=accept-new",
+                    "-av",
+                    "--progress",
+                    "--delete",
+                    "--ignore-times",
+                    f"{job.in_path}/",
+                    f"{ip}:{path}",
+                ],
                 timeout=60 * 2,
                 shell=True,
                 check=True,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
             )
-        except subprocess.SubprocessError:
+        except subprocess.SubprocessError as e:
             job.log(red(f"[DIST] Failed to upload to {ip}"))
-            traceback.print_exc()
+            if isinstance(e, subprocess.CalledProcessError):
+                job.conn.send(e.stdout or b"")
+                job.conn.send(e.stderr or b"")
+            job.log(red(traceback.format_exc()))
             job.conn.send(b"%*&1\n")
             job.conn.close()
             return
 
+        # flash binary
+        job.log(blue("[DIST] Flashing binary"))
         try:
-            subprocess.run(
+            output = subprocess.run(
                 [
                     "ssh",
                     "-F",
@@ -63,20 +78,27 @@ def distribute(job: DistributionJob, ip: str):
                     "-o",
                     "StrictHostKeyChecking=accept-new",
                     ip,
-                    f"{venv} && {update_script} {path}/max78000.bin && rm -rf {path}",
+                    f"{venv} || exit 1; {update_script} {path}/max78000.bin; exit_code=$?; rm -rf {path}; exit $exit_code",
                 ],
                 timeout=60 * 2,
                 check=True,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
             )
-        except subprocess.SubprocessError:
+            job.conn.send(output.stdout)
+            job.conn.send(output.stderr)
+        except subprocess.SubprocessError as e:
             job.log(red(f"[DIST] Failed to flash on {ip}"))
-            traceback.print_exc()
+            if isinstance(e, subprocess.CalledProcessError):
+                job.conn.send(e.stdout or b"")
+                job.conn.send(e.stderr or b"")
+            job.log(red(traceback.format_exc()))
             job.conn.send(b"%*&1\n")
             job.conn.close()
             return
 
         # run tests
-        job.log(blue(f"[DIST] Uploaded! Running tests for {job.name}\n"))
+        job.log(blue(f"[DIST] Flashed! Running tests for {job.name}\n"))
         # TODO
         """
         try:
@@ -93,8 +115,8 @@ def distribute(job: DistributionJob, ip: str):
             job.time = time.time()
             push_webhook("TEST", job)
             return
-        print(f"Tests OK for {job.name}")
         """
+        job.log(blue(f"[DIST] Tests OK for {job.name}"))
         job.conn.send(b"%*&0\n")
         job.conn.close()
         job.status = "SUCCESS"
@@ -116,17 +138,12 @@ def distribution_loop():
         req.start_time = time.time()
         upload_status[avail_ip].job = req
         push_webhook()
-        # for other_req in distribution_queue:
-        #    other_req.conn.send(
-        #        f"There are {upload_queue.size()} uploads in queue. \n".encode()
-        #    )
         threading.Thread(target=distribute, args=(req, avail_ip), daemon=True).start()
 
 
 def init_distribution_queue():
     # setup ssh
-
-    with open("ssh_config", "w") as f:
+    with open("ssh_config", "w", encoding="utf-8") as f:
         for ip in IPS:
             f.write(
                 f"Host {ip.split("@")[1]}\nProxyCommand cloudflared access ssh --hostname %h\n"
@@ -134,7 +151,7 @@ def init_distribution_queue():
             upload_status[ip] = TestServerStatus()
             server_queue.put(ip)
     push_webhook()
-    print(blue(f"Loaded {len(IPS)} ips"))
+    print(blue(f"[DIST] Loaded {len(IPS)} ips"))
 
     print(blue("[DIST] Dist queue ready..."))
     threading.Thread(target=distribution_loop, daemon=True).start()

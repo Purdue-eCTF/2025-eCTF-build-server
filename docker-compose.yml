@@ -1,5 +1,6 @@
+name: ectf_build_server
 services:
-    ectf_build:
+    ectf_build_server:
         container_name: ectf_build_server
         build:
             dockerfile: ./Dockerfile
@@ -9,20 +10,10 @@ services:
         restart: always
         volumes:
             - /var/run/docker.sock:/var/run/docker.sock
-            - 2025-eCTF-design:/root/src/2025-eCTF-design
-            - build_out:/root/src/build_out
-            - secrets:/root/src/secrets
-
-    ssh-server:
-        image: linuxserver/openssh-server
-        environment:
-            - PUBLIC_KEY_FILE=./id_ed25519.pub
-        volumes:
-            - config:/config
-        ports:
-            - 22:2222
+            - decoder:/root/mounts/decoder
+            - build_out:/root/mounts/build_out
+            - secrets:/root/mounts/secrets
 volumes:
-    config:
-    2025-eCTF-design:
+    decoder:
     build_out:
     secrets:

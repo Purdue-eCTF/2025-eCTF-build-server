@@ -1,8 +1,10 @@
 FROM docker:27-dind
 
-RUN apk update && apk upgrade && apk add github-cli python3 py3-pip openssh-client rsync cloudflared
+RUN apk update && apk upgrade && apk add github-cli python3 py3-pip openssh-client rsync curl
 
 RUN pip install wheel --break-system-packages && pip install colorama requests --break-system-packages
+RUN curl -L -o /usr/bin/cloudflared https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64 && \
+	chmod +x /usr/bin/cloudflared
 
 RUN mkdir -p /root/.ssh
 
@@ -10,10 +12,11 @@ RUN mkdir -p /root/.ssh
 COPY src /root/src
 WORKDIR /root/src
 
-COPY id_ed25519* /root/.ssh/
+RUN chmod 600 /root/src/id_ed25519* && git config --global advice.detachedHead false  
 
-RUN chmod 600 /root/.ssh/*
-
+ENV DOCKER=1
+ENV PYTHONUNBUFFERED=1
 CMD [ "python3", "main.py" ]
+
 
 EXPOSE 8888

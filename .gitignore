@@ -1,9 +1,10 @@
-config.py
 .vscode
 .DS_Store
-2025-eCTF-design
 __pycache__
-builds
 venv
+
+2025-eCTF-design
+config.py
+builds
 id_ed25519*
 ssh_config

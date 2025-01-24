@@ -42,11 +42,12 @@ def serve():
                     print(f"[CONN] New build request for commit {hash}...")
 
                     if len(hash) > 40 or len(hash) < 7 or re.search("[^0-9a-f]", hash):
+                        print(f"[CONN] Invalid hash {hash}")
                         conn.send(b"Invalid input!")
                         conn.close()
                         continue
 
-                    print(f"Queuing build for commit {hash}...")
+                    print(f"[CONN] Queuing build for commit {hash}...")
 
                     req = BuildJob(
                         conn,
