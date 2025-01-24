@@ -55,8 +55,8 @@ def serve():
                         time.time(),
                         CommitInfo(hash, author, name, run_id),
                     )
-                    add_to_build_queue(req)
                     push_webhook()
+                    add_to_build_queue(req)
                 elif method == "attack-target":
                     conn.send(b"Uploading target design\n")
                     # TODO
