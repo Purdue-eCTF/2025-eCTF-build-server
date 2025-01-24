@@ -31,145 +31,153 @@ def build(job: BuildJob):
     job.status = "BUILDING"
     push_webhook("BUILD", job)
 
-    job.log(blue("[BUILD] Pulling from repo..."))
-    # pull from repo
     try:
-        output = subprocess.run(
-            "cd 2025-eCTF-design &&"
-            "git checkout main &&"
-            "git fetch &&"
-            "git reset --hard origin/main &&"
-            f"git checkout {job.commit.hash}",
-            shell=True,
-            check=True,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-        )
-        job.conn.send(output.stdout)
-        job.conn.send(output.stderr)
-    except Exception:
-        job.log(
-            red(f"[BUILD] Failed to build commit {job.commit.hash}! No commit found.")
-        )
-        job.log(red(traceback.format_exc()))
-        job.conn.send(b"%*&1\n")
-        job.conn.close()
-
-        job.status = "FAILED"
-        push_webhook("BUILD", job)
-        return
-
-    job.log(blue("[BUILD] Building secrets..."))
-    # build secrets
-    try:
-        # todo: change active channels
-        output = subprocess.run(
-            "cd 2025-eCTF-design &&"
-            "rm -rf secrets/* &&"
-            "mkdir -p secrets &&"
-            ". ./.venv/bin/activate &&"
-            "python -m ectf25_design.gen_secrets secrets/secrets.json 1 2 3 4",
-            shell=True,
-            check=True,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-        )
-        job.conn.send(output.stdout)
-        job.conn.send(output.stderr)
-    except subprocess.CalledProcessError as e:
-        job.log(
-            red(
-                f"[BUILD] Failed to build commit {job.commit.hash}! Failed to build secrets!"
-            )
-        )
-        job.conn.send(e.stdout or b"")
-        job.conn.send(e.stderr or b"")
-        job.log(red(traceback.format_exc()))
-        job.conn.send(b"%*&1\n")
-        job.conn.close()
-
-        job.status = "FAILED"
-        push_webhook("BUILD", job)
-        return
-
-    job.log(blue("[BUILD] Building decoder..."))
-    # build decoder
-    try:
-        if os.getenv("DOCKER"):
-            # docker-in-docker jank
-            # ectf_build_server_build_out is volume mounted to ~/mounts/build_out which is symlinked to ~/src/2025-eCTF-design/build_out
-            # ectf_build_server_decoder is volume mounted to ~/mounts/decoder which is copied from ~/src/2025-eCTF-design/decoder
-            # ectf_build_server_secrets is volume mounted to ~/mounts/secrets which is symlinked to ~/src/2025-eCTF-design/secrets
+        job.log(blue("[BUILD] Pulling from repo..."))
+        # pull from repo
+        try:
             output = subprocess.run(
-                "cd 2025-eCTF-design && cp -r decoder/* ~/mounts/decoder && rm -rf build_out/* &&"
-                "(cd decoder && docker build -t decoder . && "
-                "docker run --rm -v ectf_build_server_build_out:/build_out -v ectf_build_server_decoder:/decoder -v ectf_build_server_secrets:/secrets -e DECODER_ID=0xdeadbeef decoder;) &&"
-                '[ -n "$(ls -A build_out 2>/dev/null)" ]',
+                "cd 2025-eCTF-design &&"
+                "git checkout main &&"
+                "git fetch &&"
+                "git reset --hard origin/main &&"
+                f"git checkout {job.commit.hash}",
                 shell=True,
                 check=True,
-                timeout=60 * 10,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
             )
-        else:
+            job.conn.send(output.stdout)
+            job.conn.send(output.stderr)
+        except Exception:
+            job.log(
+                red(f"[BUILD] Failed to build commit {job.commit.hash}! No commit found.")
+            )
+            job.log(red(traceback.format_exc()))
+            job.conn.send(b"%*&1\n")
+            job.conn.close()
+
+            job.status = "FAILED"
+            push_webhook("BUILD", job)
+            return
+
+        job.log(blue("[BUILD] Building secrets..."))
+        # build secrets
+        try:
+            # todo: change active channels
             output = subprocess.run(
-                "cd 2025-eCTF-design && ./build.sh && "
-                '[ -n "$(ls -A build_out 2>/dev/null)" ]',
+                "cd 2025-eCTF-design &&"
+                "rm -rf secrets/* &&"
+                "mkdir -p secrets &&"
+                ". ./.venv/bin/activate &&"
+                "python -m ectf25_design.gen_secrets secrets/secrets.json 1 2 3 4",
                 shell=True,
                 check=True,
-                timeout=60 * 10,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
             )
-        job.conn.send(output.stdout)
-        job.conn.send(output.stderr)
-    except subprocess.SubprocessError as e:
-        job.log(red(f"[BUILD] Failed to build commit {job.commit.hash}! Build failed!"))
-        if isinstance(e, subprocess.CalledProcessError):
+            job.conn.send(output.stdout)
+            job.conn.send(output.stderr)
+        except subprocess.CalledProcessError as e:
+            job.log(
+                red(
+                    f"[BUILD] Failed to build commit {job.commit.hash}! Failed to build secrets!"
+                )
+            )
             job.conn.send(e.stdout or b"")
             job.conn.send(e.stderr or b"")
-        job.log(red(traceback.format_exc()))
-        job.conn.send(b"%*&1\n")
-        job.conn.close()
+            job.log(red(traceback.format_exc()))
+            job.conn.send(b"%*&1\n")
+            job.conn.close()
 
-        job.status = "FAILED"
-        push_webhook("BUILD", job)
-        return
+            job.status = "FAILED"
+            push_webhook("BUILD", job)
+            return
 
-    # output in build_out
-    try:
-        subprocess.run(
-            f"cd 2025-eCTF-design && rm -rf ../builds/{job.commit.hash} && mkdir -p ../builds/{job.commit.hash} && cp -r build_out/* ../builds/{job.commit.hash}",
-            shell=True,
-            check=True,
+        job.log(blue("[BUILD] Building decoder..."))
+        # build decoder
+        try:
+            if os.getenv("DOCKER"):
+                # docker-in-docker jank
+                # ectf_build_server_build_out is volume mounted to ~/mounts/build_out which is symlinked to ~/src/2025-eCTF-design/build_out
+                # ectf_build_server_decoder is volume mounted to ~/mounts/decoder which is copied from ~/src/2025-eCTF-design/decoder
+                # ectf_build_server_secrets is volume mounted to ~/mounts/secrets which is symlinked to ~/src/2025-eCTF-design/secrets
+                output = subprocess.run(
+                    "cd 2025-eCTF-design && cp -r decoder/* ~/mounts/decoder && rm -rf build_out/* &&"
+                    "(cd decoder && docker build -t decoder . && "
+                    "docker run --rm -v ectf_build_server_build_out:/build_out -v ectf_build_server_decoder:/decoder -v ectf_build_server_secrets:/secrets -e DECODER_ID=0xdeadbeef decoder;) &&"
+                    '[ -n "$(ls -A build_out 2>/dev/null)" ]',
+                    shell=True,
+                    check=True,
+                    timeout=60 * 10,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE,
+                )
+            else:
+                output = subprocess.run(
+                    "cd 2025-eCTF-design && ./build.sh && "
+                    '[ -n "$(ls -A build_out 2>/dev/null)" ]',
+                    shell=True,
+                    check=True,
+                    timeout=60 * 10,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE,
+                )
+            job.conn.send(output.stdout)
+            job.conn.send(output.stderr)
+        except subprocess.SubprocessError as e:
+            job.log(
+                red(f"[BUILD] Failed to build commit {job.commit.hash}! Build failed!")
+            )
+            if isinstance(e, subprocess.CalledProcessError):
+                job.conn.send(e.stdout or b"")
+                job.conn.send(e.stderr or b"")
+            job.log(red(traceback.format_exc()))
+            job.conn.send(b"%*&1\n")
+            job.conn.close()
+
+            job.status = "FAILED"
+            push_webhook("BUILD", job)
+            return
+
+        # output in build_out
+        try:
+            subprocess.run(
+                f"cd 2025-eCTF-design && rm -rf ../builds/{job.commit.hash} && mkdir -p ../builds/{job.commit.hash} && cp -r build_out/* ../builds/{job.commit.hash}",
+                shell=True,
+                check=True,
+            )
+        except subprocess.CalledProcessError as e:
+            job.log(
+                red(f"[BUILD] Failed to build commit {job.commit.hash}! Build failed!")
+            )
+            job.conn.send(e.stdout or b"")
+            job.conn.send(e.stderr or b"")
+            job.log(red(traceback.format_exc()))
+            job.conn.send(b"%*&1\n")
+            job.conn.close()
+
+            job.status = "FAILED"
+            push_webhook("BUILD", job)
+            return
+
+        job.log(blue(f"[BUILD] Built {job.commit.hash}!"))
+
+        active_build = None
+        push_webhook()
+
+        add_to_dist_queue(
+            DistributionJob(
+                job.conn,
+                "PENDING",
+                time.time(),
+                job.commit.hash,
+                f"./builds/{job.commit.hash}",
+                job.commit.hash,
+                job.commit,
+            )
         )
-    except subprocess.CalledProcessError as e:
-        job.log(red(f"[BUILD] Failed to build commit {job.commit.hash}! Build failed!"))
-        job.conn.send(e.stdout or b"")
-        job.conn.send(e.stderr or b"")
-        job.log(red(traceback.format_exc()))
-        job.conn.send(b"%*&1\n")
-        job.conn.close()
-
-        job.status = "FAILED"
-        push_webhook("BUILD", job)
-        return
-
-    job.log(blue(f"[BUILD] Built {job.commit.hash}!"))
-
-    push_webhook()
-
-    add_to_dist_queue(
-        DistributionJob(
-            job.conn,
-            "PENDING",
-            time.time(),
-            job.commit.hash,
-            f"./builds/{job.commit.hash}",
-            job.commit.hash,
-            job.commit,
-        )
-    )
+    finally:
+        active_build = None
 
 
 def build_loop():
