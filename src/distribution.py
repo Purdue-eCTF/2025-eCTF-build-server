@@ -132,7 +132,6 @@ def distribute(job: DistributionJob, ip: str):
     except (BrokenPipeError, TimeoutError):
         print(red("[DIST] Client disconnected"))
     finally:
-        upload_status[ip].job = None
         server_queue.put(ip)
         shutil.rmtree(job.in_path)
 
