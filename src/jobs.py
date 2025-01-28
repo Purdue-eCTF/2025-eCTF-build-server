@@ -42,18 +42,3 @@ class BuildJob(Job):
             "actionStart": round(self.start_time),
             "commit": self.commit.to_json(),
         }
-
-
-@dataclass
-class DistributionJob(Job):
-    name: str
-    in_path: str
-    out_path: str
-    commit: CommitInfo | None = None
-
-    def to_json(self):
-        return {
-            "result": self.status,
-            "actionStart": round(self.start_time),
-            "commit": self.commit and self.commit.to_json(),
-        }

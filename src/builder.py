@@ -9,8 +9,8 @@ from threading import Thread
 
 from colors import blue, red
 from config import DESIGN_REPO, GITHUB_TOKEN
-from distribution import add_to_dist_queue
-from jobs import BuildJob, DistributionJob
+from distribution import TestingJob, add_to_dist_queue
+from jobs import BuildJob
 from webhook import push_webhook
 
 BUILD_QUEUE: Queue[BuildJob] = Queue()
@@ -167,13 +167,12 @@ def build(job: BuildJob):
         push_webhook()
 
         add_to_dist_queue(
-            DistributionJob(
+            TestingJob(
                 job.conn,
                 "PENDING",
                 time.time(),
                 job.commit.hash,
                 f"./builds/{job.commit.run_id}",
-                job.commit.hash,
                 job.commit,
             )
         )
