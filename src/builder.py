@@ -70,6 +70,7 @@ def build(job: BuildJob):
                 "rm -rf secrets/* &&"
                 "mkdir -p secrets &&"
                 ". ./.venv/bin/activate &&"
+                "pip install -e ./design &&"
                 "python -m ectf25_design.gen_secrets secrets/secrets.json 1 2 3 4",
                 shell=True,
                 check=True,
