@@ -16,6 +16,7 @@ upload_status: dict[str, "TestServerStatus"] = {}
 server_queue: Queue[str] = Queue()
 
 OUT_PATH = "~/ectf2025/build_out/"
+TEST_OUT_PATH = "~/ectf2025/test_out/"
 UPDATE_SCRIPT = "~/ectf2025/CI/update"
 VENV = ". ~/ectf2025/.venv/bin/activate"
 
@@ -94,6 +95,7 @@ class DistributionJob(Job):
                 push_webhook("TEST", self)
                 return
 
+            self.log(blue("[DIST] Flashed!"))
             self.post_upload(ip)
         except (BrokenPipeError, TimeoutError):
             print(red("[DIST] Client disconnected"))
@@ -122,8 +124,97 @@ class TestingJob(DistributionJob):
 
     def post_upload(self, ip: str):
         # run tests
-        self.log(blue(f"[DIST] Flashed! Running tests for {self.name}\n"))
-        # TODO
+        self.log(blue(f"[TEST] Running tests for {self.name}\n"))
+
+        # TODO figure out channels/timestamps
+        # generate subscription
+        try:
+            output = subprocess.run(
+                f"cd {self.build_folder}&& "
+                "mkdir -p test_out/ &&"
+                ". ./.venv/bin/activate &&"
+                "python -m ectf25_design.gen_subscription secrets/secrets.json test_out/subscription.bin 0xDEADBEEF 0 63 1",
+                shell=True,
+                check=True,
+                timeout=15,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+            )
+            self.conn.send(output.stdout)
+            self.conn.send(output.stderr)
+        except subprocess.CalledProcessError as e:
+            self.on_error(e, "[TEST] Subscription generation failed")
+            self.status = "FAILED"
+            push_webhook("TEST", self)
+            return
+
+        # encode rand frames
+        """
+        try:
+            output = subprocess.run(
+                f"cd {self.build_folder}&& "
+                "mkdir -p test_out/ &&"
+                ". ./.venv/bin/activate &&"
+                "python -m ectf25.utils.tester --secrets secrets/secrets.json --stub-decoder --perf "
+                "--dump-raw test_out/raw_frames.json --dump-encoded test_out/encoded_frames.json "
+                "rand -n 1000 --channels 0 1",
+                shell=True,
+                check=True,
+                timeout=15,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+            )
+            self.conn.send(output.stdout)
+            self.conn.send(output.stderr)
+        except subprocess.CalledProcessError as e:
+            self.status = "FAILED"
+            push_webhook("TEST", self)
+        """
+
+        try:
+            output = subprocess.run(
+                f"cd {self.build_folder}&& "
+                "mkdir -p test_out/ &&"
+                ". ./.venv/bin/activate &&"
+                "python -m ectf25.utils.tester --secrets secrets/secrets.json --stub-decoder --perf "
+                "--dump-raw test_out/raw_frames.json --dump-encoded test_out/encoded_frames.json "
+                "json frames/x_c0.json",
+                shell=True,
+                check=True,
+                timeout=15,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+            )
+            self.conn.send(output.stdout)
+            self.conn.send(output.stderr)
+        except subprocess.CalledProcessError as e:
+            self.status = "FAILED"
+            push_webhook("TEST", self)
+
+        # TODO python -m ectf25.utils.stress_test --test-size 1000000 encode --dump test_out/stress_test_encoded_frames.json secrets/secrets.json
+        try:
+            subprocess.run(
+                [
+                    "rsync",
+                    "--rsh=ssh -F ssh_config -i id_ed25519 -o StrictHostKeyChecking=accept-new",
+                    "-av",
+                    "--progress",
+                    "--delete",
+                    "--ignore-times",
+                    f"{self.build_folder}/test_out/",
+                    f"{ip}:{OUT_PATH}",
+                ],
+                timeout=60 * 2,
+                check=True,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+            )
+        except subprocess.SubprocessError as e:
+            self.on_error(e, f"[DIST] Failed to upload to {ip}")
+
+            self.status = "FAILED"
+            push_webhook("TEST", self)
+            return
         """
         try:
             subprocess.run(
