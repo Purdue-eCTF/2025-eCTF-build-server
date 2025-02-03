@@ -6,6 +6,7 @@ import time
 import traceback
 from dataclasses import dataclass
 from queue import Queue
+from socket import socket
 
 from colors import blue, red
 from config import IPS
@@ -119,6 +120,20 @@ class DistributionJob(Job):
 
 
 class TestingJob(DistributionJob):
+    def __init__(
+        self,
+        conn: socket,
+        status: str,
+        start_time: float,
+        name: str,
+        build_folder: str,
+        commit: CommitInfo | None = None,
+    ):
+        self.build_folder = build_folder
+        super().__init__(
+            conn, status, start_time, name, build_folder + "/build_out/", commit
+        )
+
     def post_upload(self, ip: str):
         # run tests
         self.log(blue(f"[DIST] Flashed! Running tests for {self.name}\n"))

@@ -32,6 +32,8 @@ def build(job: BuildJob):
     job.start_time = time.time()
     push_webhook("BUILD", job)
 
+    build_folder = f"./builds/{job.commit.run_id}"
+
     try:
         job.log(blue("[BUILD] Pulling from repo..."))
         # pull from repo
@@ -144,7 +146,7 @@ def build(job: BuildJob):
         # output in build_out
         try:
             subprocess.run(
-                f"cd 2025-eCTF-design && rm -rf ../builds/{job.commit.run_id} && mkdir -p ../builds/{job.commit.run_id} && cp -r build_out/* ../builds/{job.commit.run_id}",
+                f"cp -Lr 2025-eCTF-design/ {build_folder}",
                 shell=True,
                 check=True,
             )
@@ -173,7 +175,7 @@ def build(job: BuildJob):
                 "PENDING",
                 time.time(),
                 job.commit.hash,
-                f"./builds/{job.commit.run_id}",
+                build_folder,
                 job.commit,
             )
         )
