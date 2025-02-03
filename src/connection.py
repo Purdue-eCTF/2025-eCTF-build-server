@@ -61,7 +61,7 @@ def serve():
                     conn.send(b"Uploading target design\n")
                     # TODO
 
-            except Exception:
+            except Exception:  # noqa: BLE001
                 traceback.print_exc()
                 conn.close()
                 continue

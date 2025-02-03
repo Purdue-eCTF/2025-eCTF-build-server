@@ -1,9 +1,7 @@
-# ruff: noqa: S607, UP022
 import shutil
 import subprocess
 import threading
 import time
-import traceback
 from dataclasses import dataclass
 from queue import Queue
 from socket import socket
@@ -61,13 +59,7 @@ class DistributionJob(Job):
                     stderr=subprocess.PIPE,
                 )
             except subprocess.SubprocessError as e:
-                self.log(red(f"[DIST] Failed to upload to {ip}"))
-                if isinstance(e, subprocess.CalledProcessError):
-                    self.conn.send(e.stdout or b"")
-                    self.conn.send(e.stderr or b"")
-                self.log(red(traceback.format_exc()))
-                self.conn.send(b"%*&1\n")
-                self.conn.close()
+                self.on_error(e, f"[DIST] Failed to upload to {ip}")
 
                 self.status = "FAILED"
                 push_webhook("TEST", self)
@@ -96,13 +88,7 @@ class DistributionJob(Job):
                 self.conn.send(output.stdout)
                 self.conn.send(output.stderr)
             except subprocess.SubprocessError as e:
-                self.log(red(f"[DIST] Failed to flash on {ip}"))
-                if isinstance(e, subprocess.CalledProcessError):
-                    self.conn.send(e.stdout or b"")
-                    self.conn.send(e.stderr or b"")
-                self.log(red(traceback.format_exc()))
-                self.conn.send(b"%*&1\n")
-                self.conn.close()
+                self.on_error(e, f"[DIST] Failed to flash on {ip}")
 
                 self.status = "FAILED"
                 push_webhook("TEST", self)

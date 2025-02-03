@@ -29,6 +29,9 @@ ignore = [
 	"TRY003", # raise-vanilla-args
 	"UP015", # redundant-open-modes
 	"E111", # indentation-with-invalid-multiple
+	"S602", # subprocess-popen-with-shell-equals-true
+	"S607", # start-process-with-partial-path
+	"UP022", # replace-stdout-stderr
 ]
 preview = true
 

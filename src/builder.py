@@ -1,4 +1,3 @@
-# ruff: noqa: S607, UP022
 import os
 import subprocess
 import sys
@@ -51,13 +50,10 @@ def build(job: BuildJob):
             )
             job.conn.send(output.stdout)
             job.conn.send(output.stderr)
-        except Exception:
-            job.log(
-                red(f"[BUILD] Failed to build commit {job.commit.hash}! No commit found.")
+        except subprocess.CalledProcessError as e:
+            job.on_error(
+                e, f"[BUILD] Failed to build commit {job.commit.hash}! No commit found."
             )
-            job.log(red(traceback.format_exc()))
-            job.conn.send(b"%*&1\n")
-            job.conn.close()
 
             job.status = "FAILED"
             push_webhook("BUILD", job)
@@ -82,16 +78,10 @@ def build(job: BuildJob):
             job.conn.send(output.stdout)
             job.conn.send(output.stderr)
         except subprocess.CalledProcessError as e:
-            job.log(
-                red(
-                    f"[BUILD] Failed to build commit {job.commit.hash}! Failed to build secrets!"
-                )
+            job.on_error(
+                e,
+                f"[BUILD] Failed to build commit {job.commit.hash}! Failed to build secrets!",
             )
-            job.conn.send(e.stdout or b"")
-            job.conn.send(e.stderr or b"")
-            job.log(red(traceback.format_exc()))
-            job.conn.send(b"%*&1\n")
-            job.conn.close()
 
             job.status = "FAILED"
             push_webhook("BUILD", job)
@@ -129,15 +119,9 @@ def build(job: BuildJob):
             job.conn.send(output.stdout)
             job.conn.send(output.stderr)
         except subprocess.SubprocessError as e:
-            job.log(
-                red(f"[BUILD] Failed to build commit {job.commit.hash}! Build failed!")
+            job.on_error(
+                e, f"[BUILD] Failed to build commit {job.commit.hash}! Build failed!"
             )
-            if isinstance(e, subprocess.CalledProcessError):
-                job.conn.send(e.stdout or b"")
-                job.conn.send(e.stderr or b"")
-            job.log(red(traceback.format_exc()))
-            job.conn.send(b"%*&1\n")
-            job.conn.close()
 
             job.status = "FAILED"
             push_webhook("BUILD", job)
@@ -151,14 +135,9 @@ def build(job: BuildJob):
                 check=True,
             )
         except subprocess.CalledProcessError as e:
-            job.log(
-                red(f"[BUILD] Failed to build commit {job.commit.hash}! Build failed!")
+            job.on_error(
+                e, f"[BUILD] Failed to build commit {job.commit.hash}! Build failed!"
             )
-            job.conn.send(e.stdout or b"")
-            job.conn.send(e.stderr or b"")
-            job.log(red(traceback.format_exc()))
-            job.conn.send(b"%*&1\n")
-            job.conn.close()
 
             job.status = "FAILED"
             push_webhook("BUILD", job)
@@ -237,6 +216,7 @@ def init_build_queue():
             shell=True,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
+            check=False,
         ).returncode
         == 0
     ):
@@ -278,8 +258,8 @@ def init_build_queue():
         sys.exit(1)
         return
 
-    subprocess.run(["rm", "-rf", "./builds"])
-    subprocess.run(["mkdir", "-p", "./builds"])
+    subprocess.run(["rm", "-rf", "./builds"], check=True)
+    subprocess.run(["mkdir", "-p", "./builds"], check=True)
 
     print(blue("[BUILD] Build queue ready..."))
     Thread(target=build_loop, daemon=True).start()
