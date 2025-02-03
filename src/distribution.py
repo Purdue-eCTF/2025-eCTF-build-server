@@ -202,7 +202,7 @@ class TestingJob(DistributionJob):
                     "--delete",
                     "--ignore-times",
                     f"{self.build_folder}/test_out/",
-                    f"{ip}:{OUT_PATH}",
+                    f"{ip}:{TEST_OUT_PATH}",
                 ],
                 timeout=60 * 2,
                 check=True,
