@@ -174,7 +174,8 @@ class TestingJob(DistributionJob):
         # encode test frames
         try:
             output = subprocess.run(
-                f"cd {self.build_folder}&& "
+                f"cp modified_tester.py {self.build_folder} && "
+                f"cd {self.build_folder} && "
                 "mkdir -p test_out/ &&"
                 ". ./.venv/bin/activate &&"
                 "python modified_tester.py --secrets secrets/secrets.json --stub-decoder --perf "
