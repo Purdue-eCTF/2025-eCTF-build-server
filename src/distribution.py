@@ -127,6 +127,7 @@ class TestingJob(DistributionJob):
         self.log(blue(f"[TEST] Running tests for {self.name}\n"))
 
         # upload test data to server
+        self.log(blue(f"[TEST] Uploading test data to {ip}"))
         try:
             subprocess.run(
                 [
@@ -146,11 +147,13 @@ class TestingJob(DistributionJob):
                 stderr=subprocess.PIPE,
             )
         except subprocess.SubprocessError as e:
-            self.on_error(e, f"[DIST] Failed to upload to {ip}")
+            self.on_error(e, f"[TEST] Failed to upload to {ip}")
 
             self.status = "FAILED"
             push_webhook("TEST", self)
             return
+
+        self.log(blue(f"[TEST] Running tests on {ip}"))
 
         try:
             output = subprocess.run(
@@ -173,13 +176,13 @@ class TestingJob(DistributionJob):
             self.conn.send(output.stdout)
             self.conn.send(output.stderr)
         except subprocess.SubprocessError as e:
-            self.on_error(e, f"[DIST] Tests failed for {self.name}")
+            self.on_error(e, f"[TEST] Tests failed for {self.name}")
 
             self.status = "FAILED"
             push_webhook("TEST", self)
             return
 
-        self.log(blue(f"[DIST] Tests OK for {self.name}"))
+        self.log(blue(f"[TEST] Tests OK for {self.name}"))
         self.conn.send(b"%*&0\n")
         self.conn.close()
         self.status = "SUCCESS"

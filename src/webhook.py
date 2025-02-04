@@ -1,6 +1,6 @@
 import requests
 
-from config import WEBHOOK_IP
+from config import DEBUG, WEBHOOK_IP
 from jobs import Job
 
 active_status: Job | None = None
@@ -9,6 +9,9 @@ active_status: Job | None = None
 def push_webhook(update_type: str = "QUEUE", update_state: Job | None = None):
     from builder import BUILD_QUEUE, active_build  # noqa: PLC0415
     from distribution import distribution_queue, upload_status  # noqa: PLC0415
+
+    if DEBUG:  # disable webhook while debugging
+        return
 
     if update_state is not None:
         global active_status
