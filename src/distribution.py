@@ -126,8 +126,6 @@ class TestingJob(DistributionJob):
         # run tests
         self.log(blue(f"[TEST] Running tests for {self.name}\n"))
 
-        # TODO python -m ectf25.utils.stress_test --test-size 1000000 encode --dump test_out/stress_test_encoded_frames.json secrets/secrets.json
-
         # upload test data to server
         try:
             subprocess.run(
