@@ -7,7 +7,9 @@ docstring-code-format = true
 preview = true
 
 [lint]
-select = ["E", "F", "N", "UP", "ASYNC", "S", "BLE", "B", "A", "C4", "DTZ", "EXE", "PIE", "SLF", "SIM", "PL", "PERF", "FURB", "RUF", "FIX", "ISC", "PGH", "ARG", "FBT", "TRY", "COM818"]
+select = ["E", "F", "N", "UP", "ASYNC", "S", "BLE", "B", "A", "C4", "DTZ", "EXE",
+        "PIE", "SLF", "SIM", "PL", "PERF", "FURB", "RUF", "FIX", "ISC", "PGH", "ARG",
+        "FBT", "TRY", "COM818", "C90", "NPY", "PD", "TC", "YTT", "W291", "W505", "W605"]
 ignore = [
 	"E741", # ambiguous-variable-name
 	"FURB101", # read-whole-file
@@ -32,6 +34,10 @@ ignore = [
 	"S602", # subprocess-popen-with-shell-equals-true
 	"S607", # start-process-with-partial-path
 	"UP022", # replace-stdout-stderr
+	"PD901", # pandas-df-variable-name
+	"TC006", # runtime-cast-value
+	"TC007", # unquoted-type-alias
+	"TC008", # quoted-type-alias
 ]
 preview = true
 

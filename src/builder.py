@@ -25,7 +25,7 @@ def add_to_build_queue(job: BuildJob):
 
 
 def build(job: BuildJob):
-    global active_build
+    global active_build  # noqa: PLW0603
     active_build = job
     job.status = "BUILDING"
     job.start_time = time.time()
@@ -96,9 +96,12 @@ def build(job: BuildJob):
                 # ectf_build_server_decoder is volume mounted to ~/mounts/decoder which is copied from ~/src/2025-eCTF-design/decoder
                 # ectf_build_server_secrets is volume mounted to ~/mounts/secrets which is symlinked to ~/src/2025-eCTF-design/secrets
                 output = subprocess.run(
-                    "cd 2025-eCTF-design && cp -r decoder/* ~/mounts/decoder && rm -rf build_out/* &&"
+                    "cd 2025-eCTF-design && "
+                    "cp -r decoder/* ~/mounts/decoder && rm -rf build_out/* &&"
                     "(cd decoder && docker build -t decoder . && "
-                    "docker run --rm -v ectf_build_server_build_out:/build_out -v ectf_build_server_decoder:/decoder -v ectf_build_server_secrets:/secrets -e DECODER_ID=0xdeadbeef decoder;) &&"
+                    "docker run --rm -v ectf_build_server_build_out:/build_out "
+                    "-v ectf_build_server_decoder:/decoder -v ectf_build_server_secrets:/secrets "
+                    "-e DECODER_ID=0xdeadbeef decoder;) &&"
                     '[ -n "$(ls -A build_out 2>/dev/null)" ]',
                     shell=True,
                     check=True,
@@ -169,7 +172,8 @@ def build_loop():
             build(job)
         except (BrokenPipeError, TimeoutError):
             print(red("[BUILD] Client disconnected"))
-        except Exception:  # error handling :tm:
+        except Exception:  # noqa: BLE001
+            # error handling :tm:
             push_webhook("BUILD", job)
             traceback.print_exc()
 
@@ -185,6 +189,7 @@ def init_build_queue():
             ["gh", "auth", "status"],
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
+            check=False,
         ).returncode
         != 0
     ):
@@ -203,7 +208,7 @@ def init_build_queue():
                 stderr=subprocess.PIPE,
                 check=True,
             )
-        except Exception:
+        except subprocess.CalledProcessError:
             print(red("[BUILD] Failed to set up git!"))
             print(red(traceback.format_exc()))
             sys.exit(1)
