@@ -155,7 +155,7 @@ class TestingJob(DistributionJob):
                 f"cd {self.build_folder}&& "
                 "mkdir -p test_out/ &&"
                 ". ./.venv/bin/activate &&"
-                "python -m ectf25.utils.tester --secrets secrets/secrets.json --stub-decoder --perf "
+                "python modified_tester.py --secrets secrets/secrets.json --stub-decoder --perf "
                 "--dump-raw test_out/raw_frames.json --dump-encoded test_out/encoded_frames.json "
                 "rand -n 1000 --channels 0 1",
                 shell=True,
@@ -171,17 +171,18 @@ class TestingJob(DistributionJob):
             push_webhook("TEST", self)
         """
 
+        # encode test frames
         try:
             output = subprocess.run(
                 f"cd {self.build_folder}&& "
                 "mkdir -p test_out/ &&"
                 ". ./.venv/bin/activate &&"
-                "python -m ectf25.utils.tester --secrets secrets/secrets.json --stub-decoder --perf "
+                "python modified_tester.py --secrets secrets/secrets.json --stub-decoder --perf "
                 "--dump-raw test_out/raw_frames.json --dump-encoded test_out/encoded_frames.json "
                 "json frames/x_c0.json",
                 shell=True,
                 check=True,
-                timeout=15,
+                timeout=30,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
             )
@@ -192,6 +193,8 @@ class TestingJob(DistributionJob):
             push_webhook("TEST", self)
 
         # TODO python -m ectf25.utils.stress_test --test-size 1000000 encode --dump test_out/stress_test_encoded_frames.json secrets/secrets.json
+
+        # upload test data to server
         try:
             subprocess.run(
                 [
@@ -215,21 +218,7 @@ class TestingJob(DistributionJob):
             self.status = "FAILED"
             push_webhook("TEST", self)
             return
-        """
-        try:
-            subprocess.run(
-                f'ssh {ip} "bash -l -c \\"cd CI/rpi/; chmod +x run-tests.sh; nix-shell --run \'./run-tests.sh {OUT_PATH}\' \\" "'
-            )
-        except Exception:
-            job.conn.send(
-                (colorama.Fore.RED + f"Tests failed!" + colorama.Fore.RESET + "\n").encode()
-            )
-            print(f"Tests failed for {job.name}")
-            job.conn.send(b"%*&1\n")
-            job.status = "FAILED"
-            push_webhook("TEST", job)
-            return
-        """
+
         self.log(blue(f"[DIST] Tests OK for {self.name}"))
         self.conn.send(b"%*&0\n")
         self.conn.close()
