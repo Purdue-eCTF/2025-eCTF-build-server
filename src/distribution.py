@@ -128,6 +128,7 @@ class TestingJob(DistributionJob):
 
         # TODO figure out channels/timestamps
         # generate subscription
+        '''
         try:
             output = subprocess.run(
                 f"cd {self.build_folder}&& "
@@ -194,7 +195,7 @@ class TestingJob(DistributionJob):
             push_webhook("TEST", self)
 
         # TODO python -m ectf25.utils.stress_test --test-size 1000000 encode --dump test_out/stress_test_encoded_frames.json secrets/secrets.json
-
+        '''
         # upload test data to server
         try:
             subprocess.run(
@@ -205,7 +206,8 @@ class TestingJob(DistributionJob):
                     "--progress",
                     "--delete",
                     "--ignore-times",
-                    f"{self.build_folder}/test_out/",
+                    f"{self.build_folder}/design",
+                    f"{self.build_folder}/tools",
                     f"{ip}:{TEST_OUT_PATH}",
                 ],
                 timeout=60 * 2,
