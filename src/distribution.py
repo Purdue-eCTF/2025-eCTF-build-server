@@ -207,7 +207,6 @@ class TestingJob(DistributionJob):
                     "--delete",
                     "--ignore-times",
                     f"{self.build_folder}/design",
-                    f"{self.build_folder}/tools",
                     f"{self.build_folder}/secrets",
                     f"{ip}:{TEST_OUT_PATH}",
                 ],
