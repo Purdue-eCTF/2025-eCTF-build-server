@@ -69,7 +69,7 @@ def build(job: BuildJob):
                 "mkdir -p secrets &&"
                 ". ./.venv/bin/activate &&"
                 "pip install -e ./design &&"
-                "python -m ectf25_design.gen_secrets secrets/secrets.json 1 2 3 4",
+                "python -m ectf25_design.gen_secrets secrets/global.secrets 1 2 3 4",
                 shell=True,
                 check=True,
                 stdout=subprocess.PIPE,
@@ -99,9 +99,9 @@ def build(job: BuildJob):
                     "cd 2025-eCTF-design && "
                     "cp -r decoder/* ~/mounts/decoder && rm -rf build_out/* &&"
                     "(cd decoder && docker build -t decoder . && "
-                    "docker run --rm -v ectf_build_server_build_out:/build_out "
-                    "-v ectf_build_server_decoder:/decoder -v ectf_build_server_secrets:/secrets "
-                    "-e DECODER_ID=0xdeadbeef decoder;) &&"
+                    "docker run --rm -v ectf_build_server_build_out:/out "
+                    "-v ectf_build_server_decoder:/decoder -v ectf_build_server_secrets:/secrets:ro "
+                    "-e DECODER_ID=0xdeadbeef -e LOCAL_SECRETS_FILE=/secrets/global.secrets decoder;) &&"
                     '[ -n "$(ls -A build_out 2>/dev/null)" ]',
                     shell=True,
                     check=True,

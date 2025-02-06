@@ -138,7 +138,7 @@ class TestingJob(DistributionJob):
                     "--delete",
                     "--ignore-times",
                     f"{self.build_folder}/design",
-                    f"{self.build_folder}/secrets",
+                    f"{self.build_folder}/secrets/global.secrets",
                     f"{ip}:{TEST_OUT_PATH}",
                 ],
                 timeout=60 * 2,
