@@ -60,10 +60,22 @@ class DistributionJob(Job):
                     stderr=subprocess.PIPE,
                 )
             except subprocess.SubprocessError as e:
-                self.on_error(e, f"[DIST] Failed to upload to {ip}")
+                if (
+                    isinstance(e, subprocess.CalledProcessError)
+                    and b"Connection closed by UNKNOWN port 65535" in e.stderr
+                ):
+                    self.log(f"[DIST] {ip} is disconnected, changing servers")
 
-                self.status = "FAILED"
-                push_webhook("TEST", self)
+                    self.status = "PENDING"
+                    push_webhook("TEST", self)
+
+                    upload_status[ip].connected = False
+                    add_to_dist_queue(self)
+                else:
+                    self.on_error(e, f"[DIST] Failed to upload to {ip}")
+
+                    self.status = "FAILED"
+                    push_webhook("TEST", self)
                 return
 
             # flash binary
@@ -148,12 +160,6 @@ class TestingJob(DistributionJob):
                 stderr=subprocess.PIPE,
             )
         except subprocess.SubprocessError as e:
-            if (
-                isinstance(e, subprocess.CalledProcessError)
-                and b"Connection closed by UNKNOWN port 65535" in e.stderr
-            ):
-                upload_status[ip].connected = False
-                add_to_dist_queue(self)
             self.on_error(e, f"[TEST] Failed to upload to {ip}")
 
             self.status = "FAILED"
