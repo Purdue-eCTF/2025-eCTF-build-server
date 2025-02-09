@@ -34,7 +34,7 @@ def push_webhook(update_type: str = "QUEUE", update_state: Job | None = None):
                 "activeTests": [
                     {
                         "ip": ip,
-                        "locked": False,  # TODO
+                        "locked": not stat.connected,  # TODO rename field
                         "active": stat.job.to_json() if stat.job else None,
                     }
                     for ip, stat in upload_status.items()

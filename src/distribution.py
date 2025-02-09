@@ -100,7 +100,8 @@ class DistributionJob(Job):
         except (BrokenPipeError, TimeoutError):
             print(red("[DIST] Client disconnected"))
         finally:
-            server_queue.put(ip)
+            if upload_status[ip].connected:
+                server_queue.put(ip)
             shutil.rmtree(self.in_path)
 
     def post_upload(self, ip: str):
@@ -147,6 +148,12 @@ class TestingJob(DistributionJob):
                 stderr=subprocess.PIPE,
             )
         except subprocess.SubprocessError as e:
+            if (
+                isinstance(e, subprocess.CalledProcessError)
+                and b"Connection closed by UNKNOWN port 65535" in e.stderr
+            ):
+                upload_status[ip].connected = False
+                add_to_dist_queue(self)
             self.on_error(e, f"[TEST] Failed to upload to {ip}")
 
             self.status = "FAILED"
@@ -166,7 +173,7 @@ class TestingJob(DistributionJob):
                     "-o",
                     "StrictHostKeyChecking=accept-new",
                     ip,
-                    f"{VENV} || exit 1; {CI_PATH}/run_build_tests.sh; exit_code=$?; rm -rf {TEST_OUT_PATH}; exit $exit_code",
+                    f"{VENV} || exit 1; {CI_PATH}/run_build_tests.sh 2>&1;",
                 ],
                 timeout=60 * 2,
                 check=True,
@@ -203,9 +210,10 @@ def distribution_loop():
 @dataclass
 class TestServerStatus:
     job: DistributionJob | None = None
+    connected: bool = True
 
     def is_avail(self):
-        return not self.job or self.job.status != "TESTING"
+        return self.connected and (not self.job or self.job.status != "TESTING")
 
 
 def add_to_dist_queue(job: DistributionJob):
