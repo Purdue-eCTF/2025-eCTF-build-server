@@ -183,7 +183,7 @@ class TestingJob(DistributionJob):
                     ip,
                     f"{VENV} || exit 1; {CI_PATH}/run_build_tests.sh;",
                 ],
-                timeout=60 * 2,
+                timeout=60 * 10,
                 check=True,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
