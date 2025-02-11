@@ -179,7 +179,7 @@ class TestingJob(DistributionJob):
                     "-o",
                     "StrictHostKeyChecking=accept-new",
                     ip,
-                    f"{VENV} || exit 1; {CI_PATH}/run_build_tests.sh 2>&1;",
+                    f"{VENV} || exit 1; {CI_PATH}/run_build_tests.sh 2>&1 | tee {TEST_OUT_PATH}/log;",
                 ],
                 timeout=60 * 2,
                 check=True,
