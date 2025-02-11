@@ -99,8 +99,8 @@ class DistributionJob(Job):
                     stdout=subprocess.PIPE,
                     stderr=subprocess.PIPE,
                 )
-                self.conn.send(output.stdout)
-                self.conn.send(output.stderr)
+                self.conn.sendall(output.stdout)
+                self.conn.sendall(output.stderr)
             except subprocess.SubprocessError as e:
                 self.on_error(e, f"[DIST] Failed to flash on {ip}")
 
@@ -181,73 +181,25 @@ class TestingJob(DistributionJob):
                     "-o",
                     "StrictHostKeyChecking=accept-new",
                     ip,
-                    f"{VENV} || exit 1; {CI_PATH}/run_build_tests.sh 2>&1 > {TEST_OUT_PATH}/log;",
+                    f"{VENV} || exit 1; {CI_PATH}/run_build_tests.sh;",
                 ],
                 timeout=60 * 2,
                 check=True,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
             )
-            self.conn.send(output.stdout)
-            self.conn.send(output.stderr)
-
-            try:
-                subprocess.run(
-                    [
-                        "scp",
-                        "-F",
-                        "ssh_config",
-                        "-i",
-                        "id_ed25519",
-                        "-o",
-                        "StrictHostKeyChecking=accept-new",
-                        f"{ip}:{TEST_OUT_PATH}/log",
-                        f"{self.build_folder}/log",
-                    ],
-                    check=True,
-                    stdout=subprocess.PIPE,
-                    stderr=subprocess.PIPE,
-                )
-                with open(f"{self.build_folder}/log", "rb") as f:
-                    self.conn.send(f.read())
-            except subprocess.SubprocessError as e:
-                self.on_error(e, "[TEST] failed to fetch log file")
+            self.conn.sendall(output.stdout)
+            self.conn.sendall(output.stderr)
 
         except subprocess.SubprocessError as e:
-            self.log(red(f"[TEST] Tests failed for {self.name}"))
-
-            try:
-                subprocess.run(
-                    [
-                        "scp",
-                        "-F",
-                        "ssh_config",
-                        "-i",
-                        "id_ed25519",
-                        "-o",
-                        "StrictHostKeyChecking=accept-new",
-                        f"{ip}:{TEST_OUT_PATH}/log",
-                        f"{self.build_folder}/log",
-                    ],
-                    check=True,
-                    stdout=subprocess.PIPE,
-                    stderr=subprocess.PIPE,
-                )
-                with open(f"{self.build_folder}/log", "rb") as f:
-                    self.conn.send(f.read())
-            except subprocess.SubprocessError as e:
-                self.on_error(e, "[TEST] failed to fetch log file")
-
-            self.log(red(traceback.format_exc()))
-            self.conn.send(b"%*&1\n")
-            self.conn.close()
+            self.on_error(e, f"[TEST] Tests failed for {self.name}")
 
             self.status = "FAILED"
             push_webhook("TEST", self)
             return
 
         self.log(blue(f"[TEST] Tests OK for {self.name}"))
-        self.conn.send(b"%*&0\n")
+        self.conn.sendall(b"%*&0\n")
         self.conn.close()
         self.status = "SUCCESS"
         push_webhook("TEST", self)

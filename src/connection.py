@@ -35,7 +35,7 @@ def serve():
                     continue
 
                 if method == "build-ours":
-                    conn.send(b"Building our design\n")
+                    conn.sendall(b"Building our design\n")
                     hash, author, name, run_id = (
                         conn.recv(1024).decode("utf-8").split("|")
                     )
@@ -43,7 +43,7 @@ def serve():
 
                     if len(hash) > 40 or len(hash) < 7 or re.search("[^0-9a-f]", hash):
                         print(f"[CONN] Invalid hash {hash}")
-                        conn.send(b"Invalid input!")
+                        conn.sendall(b"Invalid input!")
                         conn.close()
                         continue
 
@@ -58,7 +58,7 @@ def serve():
                     push_webhook()
                     add_to_build_queue(req)
                 elif method == "attack-target":
-                    conn.send(b"Uploading target design\n")
+                    conn.sendall(b"Uploading target design\n")
                     # TODO
 
             except Exception:  # noqa: BLE001

@@ -48,8 +48,8 @@ def build(job: BuildJob):
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
             )
-            job.conn.send(output.stdout)
-            job.conn.send(output.stderr)
+            job.conn.sendall(output.stdout)
+            job.conn.sendall(output.stderr)
         except subprocess.CalledProcessError as e:
             job.on_error(
                 e, f"[BUILD] Failed to build commit {job.commit.hash}! No commit found."
@@ -75,8 +75,8 @@ def build(job: BuildJob):
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
             )
-            job.conn.send(output.stdout)
-            job.conn.send(output.stderr)
+            job.conn.sendall(output.stdout)
+            job.conn.sendall(output.stderr)
         except subprocess.CalledProcessError as e:
             job.on_error(
                 e,
@@ -119,8 +119,8 @@ def build(job: BuildJob):
                     stdout=subprocess.PIPE,
                     stderr=subprocess.PIPE,
                 )
-            job.conn.send(output.stdout)
-            job.conn.send(output.stderr)
+            job.conn.sendall(output.stdout)
+            job.conn.sendall(output.stderr)
         except subprocess.SubprocessError as e:
             job.on_error(
                 e, f"[BUILD] Failed to build commit {job.commit.hash}! Build failed!"
