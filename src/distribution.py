@@ -1,8 +1,8 @@
+import re
 import shutil
 import subprocess
 import threading
 import time
-import traceback
 from dataclasses import dataclass
 from queue import Queue
 from socket import socket
@@ -14,7 +14,7 @@ from webhook import push_webhook
 
 distribution_queue: Queue["DistributionJob"] = Queue()
 upload_status: dict[str, "TestServerStatus"] = {}
-server_queue: Queue[str] = Queue()
+server_queues: dict[str, Queue[str]] = {"TEST": Queue(), "ATTACK": Queue()}
 
 OUT_PATH = "~/ectf2025/build_out/"
 TEST_OUT_PATH = "~/ectf2025/test_out/"
@@ -27,6 +27,7 @@ class DistributionJob(Job):
     name: str
     in_path: str
     commit: CommitInfo | None = None
+    queue_type: str
 
     def to_json(self):
         return {
@@ -115,7 +116,7 @@ class DistributionJob(Job):
         finally:
             if upload_status[ip].connected:
                 # if not changing servers
-                server_queue.put(ip)
+                server_queues[self.queue_type].put(ip)
                 shutil.rmtree(self.in_path)
 
     def post_upload(self, ip: str):
@@ -134,7 +135,7 @@ class TestingJob(DistributionJob):
     ):
         self.build_folder = build_folder
         super().__init__(
-            conn, status, start_time, name, build_folder + "/build_out/", commit
+            conn, status, start_time, name, build_folder + "/build_out/", commit, "TEST"
         )
 
     def post_upload(self, ip: str):
@@ -205,10 +206,67 @@ class TestingJob(DistributionJob):
         push_webhook("TEST", self)
 
 
+class AttackingJob(DistributionJob):
+    def __init__(
+        self,
+        conn: socket,
+        status: str,
+        start_time: float,
+        name: str,
+        build_folder: str,
+        commit: CommitInfo | None = None,
+    ):
+        self.build_folder = build_folder
+        super().__init__(
+            conn, status, start_time, name, build_folder, commit, "ATTACK"
+        )
+
+    def post_upload(self, ip: str):
+        # run attacks
+        self.log(blue(f"[ATTACK] Running attacks for {self.name} on {ip}\n"))
+
+        try:
+            output = subprocess.run(
+                [
+                    "ssh",
+                    "-F",
+                    "ssh_config",
+                    "-i",
+                    "id_ed25519",
+                    "-o",
+                    "StrictHostKeyChecking=accept-new",
+                    ip,
+                    f"{VENV} || exit 1; {CI_PATH}/run_attack_tests.sh;",
+                ],
+                timeout=60 * 10,
+                check=True,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+            )
+            self.conn.sendall(output.stdout)
+            self.conn.sendall(output.stderr)
+
+            # search for flags
+            potential_flags = set(re.findall(r"ectf\{[a-zA-Z0-9_]+\}", output.stdout.decode()))
+            # todo, submit
+        except subprocess.SubprocessError as e:
+            self.on_error(e, f"[ATTACK] Attacks failed for {self.name}")
+
+            self.status = "FAILED"
+            push_webhook("TEST", self)
+            return
+
+        self.log(blue(f"[ATTACK] ATTACK OK for {self.name}"))
+        self.conn.sendall(b"%*&0\n")
+        self.conn.close()
+        self.status = "SUCCESS"
+        push_webhook("TEST", self)
+
+
 def distribution_loop():
     while True:
         req = distribution_queue.get()
-        avail_ip = server_queue.get()
+        avail_ip = server_queues[req.queue_type].get()
         req.status = "TESTING"
         req.start_time = time.time()
         upload_status[avail_ip].job = req
@@ -232,12 +290,12 @@ def add_to_dist_queue(job: DistributionJob):
 def init_distribution_queue():
     # setup ssh
     with open("ssh_config", "w", encoding="utf-8") as f:
-        for ip in IPS:
+        for ip, queue_type in IPS:
             f.write(
                 f"Host {ip.split('@')[1]}\nProxyCommand cloudflared access ssh --hostname %h\n"
             )
             upload_status[ip] = TestServerStatus()
-            server_queue.put(ip)
+            server_queues[queue_type].put(ip)
     push_webhook()
     print(blue(f"[DIST] Loaded {len(IPS)} ips"))
 
