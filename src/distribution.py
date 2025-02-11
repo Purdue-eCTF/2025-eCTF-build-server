@@ -2,6 +2,7 @@ import shutil
 import subprocess
 import threading
 import time
+import traceback
 from dataclasses import dataclass
 from queue import Queue
 from socket import socket
@@ -113,8 +114,9 @@ class DistributionJob(Job):
             print(red("[DIST] Client disconnected"))
         finally:
             if upload_status[ip].connected:
+                # if not changing servers
                 server_queue.put(ip)
-            shutil.rmtree(self.in_path)
+                shutil.rmtree(self.in_path)
 
     def post_upload(self, ip: str):
         pass
@@ -179,7 +181,7 @@ class TestingJob(DistributionJob):
                     "-o",
                     "StrictHostKeyChecking=accept-new",
                     ip,
-                    f"{VENV} || exit 1; {CI_PATH}/run_build_tests.sh 2>&1 | tee {TEST_OUT_PATH}/log;",
+                    f"{VENV} || exit 1; {CI_PATH}/run_build_tests.sh 2>&1 > {TEST_OUT_PATH}/log;",
                 ],
                 timeout=60 * 2,
                 check=True,
@@ -188,8 +190,57 @@ class TestingJob(DistributionJob):
             )
             self.conn.send(output.stdout)
             self.conn.send(output.stderr)
+
+            try:
+                subprocess.run(
+                    [
+                        "scp",
+                        "-F",
+                        "ssh_config",
+                        "-i",
+                        "id_ed25519",
+                        "-o",
+                        "StrictHostKeyChecking=accept-new",
+                        f"{ip}:{TEST_OUT_PATH}/log",
+                        f"{self.build_folder}/log",
+                    ],
+                    check=True,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE,
+                )
+                with open(f"{self.build_folder}/log", "rb") as f:
+                    self.conn.send(f.read())
+            except subprocess.SubprocessError as e:
+                self.on_error(e, "[TEST] failed to fetch log file")
+
         except subprocess.SubprocessError as e:
-            self.on_error(e, f"[TEST] Tests failed for {self.name}")
+            self.log(red(f"[TEST] Tests failed for {self.name}"))
+
+            try:
+                subprocess.run(
+                    [
+                        "scp",
+                        "-F",
+                        "ssh_config",
+                        "-i",
+                        "id_ed25519",
+                        "-o",
+                        "StrictHostKeyChecking=accept-new",
+                        f"{ip}:{TEST_OUT_PATH}/log",
+                        f"{self.build_folder}/log",
+                    ],
+                    check=True,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE,
+                )
+                with open(f"{self.build_folder}/log", "rb") as f:
+                    self.conn.send(f.read())
+            except subprocess.SubprocessError as e:
+                self.on_error(e, "[TEST] failed to fetch log file")
+
+            self.log(red(traceback.format_exc()))
+            self.conn.send(b"%*&1\n")
+            self.conn.close()
 
             self.status = "FAILED"
             push_webhook("TEST", self)
