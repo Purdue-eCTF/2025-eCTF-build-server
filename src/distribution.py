@@ -26,8 +26,8 @@ VENV = ". ~/ectf2025/.venv/bin/activate"
 class DistributionJob(Job):
     name: str
     in_path: str
-    commit: CommitInfo | None = None
     queue_type: str
+    commit: CommitInfo | None = None
 
     def to_json(self):
         return {
@@ -135,7 +135,13 @@ class TestingJob(DistributionJob):
     ):
         self.build_folder = build_folder
         super().__init__(
-            conn, status, start_time, name, build_folder + "/build_out/", commit, "TEST"
+            conn,
+            status,
+            start_time,
+            name,
+            build_folder + "/build_out/",
+            "TEST",
+            commit,
         )
 
     def post_upload(self, ip: str):
@@ -259,7 +265,7 @@ class AttackingJob(DistributionJob):
         commit: CommitInfo | None = None,
     ):
         self.build_folder = build_folder
-        super().__init__(conn, status, start_time, name, build_folder, commit, "ATTACK")
+        super().__init__(conn, status, start_time, name, build_folder, "ATTACK", commit)
 
     def post_upload(self, ip: str):
         # run attacks
