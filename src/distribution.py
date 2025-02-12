@@ -239,13 +239,14 @@ class UpdateCIJob(Job):
                             "-o",
                             "StrictHostKeyChecking=accept-new",
                             ip,
-                            f"cd {CI_PATH} && git pull --ff-only origin main",
+                            f"cd {CI_PATH} && "
+                            f"GITHUB_USERNAME={GITHUB_USERNAME} GITHUB_TOKEN={GITHUB_TOKEN} "
+                            f"GIT_ASKPASS={CI_PATH}/git-askpass.sh git pull --ff-only origin main",
                         ],
                         timeout=60 * 2,
                         check=True,
                         stdout=subprocess.PIPE,
                         stderr=subprocess.PIPE,
-                        input=f"{GITHUB_USERNAME}\n{GITHUB_TOKEN}\n".encode(),
                     )
                     self.conn.sendall(output.stdout)
                     self.conn.sendall(output.stderr)
