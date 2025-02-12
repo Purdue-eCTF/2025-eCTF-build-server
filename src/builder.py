@@ -163,6 +163,7 @@ def build(job: BuildJob):
         )
     finally:
         active_build = None
+        BUILD_QUEUE.task_done()
 
 
 def build_loop():

@@ -118,6 +118,7 @@ class DistributionJob(Job):
                 # if not changing servers
                 server_queues[self.queue_type].put(ip)
                 self.cleanup()
+            distribution_queue.task_done()
 
     def cleanup(self):
         shutil.rmtree(self.in_path)
