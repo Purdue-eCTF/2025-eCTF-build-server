@@ -7,6 +7,7 @@ import traceback
 from builder import add_to_build_queue
 from colors import blue
 from config import AUTH_TOKEN, PORT
+from distribution import UpdateCIJob
 from jobs import BuildJob, CommitInfo
 from webhook import push_webhook
 
@@ -58,8 +59,11 @@ def serve():
                     push_webhook()
                     add_to_build_queue(req)
                 elif method == "attack-target":
-                    conn.sendall(b"Uploading target design\n")
+                    conn.sendall(b"Attacking target design\n")
                     # TODO
+                elif method == "update-ci":
+                    conn.sendall(b"Updating CI\n")
+                    UpdateCIJob(conn, "PENDING", time.time()).update_ci()
 
             except Exception:  # noqa: BLE001
                 traceback.print_exc()

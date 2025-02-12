@@ -7,8 +7,9 @@ from dataclasses import dataclass
 from queue import Queue
 from socket import socket
 
+from builder import BUILD_QUEUE
 from colors import blue, red
-from config import IPS
+from config import GITHUB_TOKEN, GITHUB_USERNAME, IPS
 from jobs import CommitInfo, Job
 from webhook import push_webhook
 
@@ -203,6 +204,46 @@ class TestingJob(DistributionJob):
         self.conn.close()
         self.status = "SUCCESS"
         push_webhook("TEST", self)
+
+
+class UpdateCIJob(Job):
+    def update_ci(self):
+        BUILD_QUEUE.join()
+        distribution_queue.join()
+
+        for ip, status in upload_status.items():
+            if status.connected:
+                self.log(blue(f"[UPDATE] Updating CI on {ip}"))
+                try:
+                    output = subprocess.run(
+                        [
+                            "ssh",
+                            "-F",
+                            "ssh_config",
+                            "-i",
+                            "id_ed25519",
+                            "-o",
+                            "StrictHostKeyChecking=accept-new",
+                            ip,
+                            f"cd {CI_PATH}/update && git pull --ff-only origin main",
+                        ],
+                        timeout=60 * 2,
+                        check=True,
+                        stdout=subprocess.PIPE,
+                        stderr=subprocess.PIPE,
+                        input=f"{GITHUB_USERNAME}\n{GITHUB_TOKEN}\n",
+                    )
+                    self.conn.sendall(output.stdout)
+                    self.conn.sendall(output.stderr)
+                except subprocess.SubprocessError as e:
+                    self.on_error(e, f"[UPDATE] Failed to update CI on {ip}")
+
+                    self.status = "FAILED"
+                    return
+            else:
+                self.log(
+                    red(f"[UPDATE] Skipping CI update on {ip} because it is disconnected")
+                )
 
 
 def distribution_loop():
