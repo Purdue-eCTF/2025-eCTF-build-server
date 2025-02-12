@@ -7,7 +7,7 @@ import traceback
 from builder import add_to_build_queue
 from colors import blue
 from config import AUTH_TOKEN, PORT
-from distribution import UpdateCIJob
+from distribution import AttackingJob, UpdateCIJob, add_to_dist_queue
 from jobs import BuildJob, CommitInfo
 from webhook import push_webhook
 
@@ -42,7 +42,7 @@ def serve():
                     )
                     print(f"[CONN] New build request for commit {hash}...")
 
-                    if len(hash) > 40 or len(hash) < 7 or re.search("[^0-9a-f]", hash):
+                    if len(hash) > 40 or len(hash) < 7 or re.search(r"[^0-9a-f]", hash):
                         print(f"[CONN] Invalid hash {hash}")
                         conn.sendall(b"Invalid input!")
                         conn.close()
@@ -56,11 +56,21 @@ def serve():
                         time.time(),
                         CommitInfo(hash, author, name, run_id),
                     )
-                    push_webhook()
                     add_to_build_queue(req)
+                    push_webhook()
                 elif method == "attack-target":
                     conn.sendall(b"Attacking target design\n")
-                    # TODO
+                    team, path = conn.recv(1024).decode("utf-8").split("|")
+                    add_to_dist_queue(
+                        AttackingJob(
+                            conn,
+                            "PENDING",
+                            time.time(),
+                            team,
+                            path,
+                        )
+                    )
+                    push_webhook()
                 elif method == "update-ci":
                     conn.sendall(b"Updating CI\n")
                     UpdateCIJob(conn, "PENDING", time.time()).update_ci()
