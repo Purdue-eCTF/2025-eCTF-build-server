@@ -261,6 +261,11 @@ class UpdateCIJob(Job):
                     red(f"[UPDATE] Skipping CI update on {ip} because it is disconnected")
                 )
 
+        self.log(blue("[UPDATE] CI updates complete"))
+        self.conn.sendall(b"%*&0\n")
+        self.conn.close()
+        self.status = "SUCCESS"
+
 
 class AttackingJob(DistributionJob):
     def __init__(
