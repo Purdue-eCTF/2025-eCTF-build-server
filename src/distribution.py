@@ -117,7 +117,10 @@ class DistributionJob(Job):
             if upload_status[ip].connected:
                 # if not changing servers
                 server_queues[self.queue_type].put(ip)
-                shutil.rmtree(self.in_path)
+                self.cleanup()
+
+    def cleanup(self):
+        shutil.rmtree(self.in_path)
 
     def post_upload(self, ip: str):
         pass
@@ -211,6 +214,9 @@ class TestingJob(DistributionJob):
         self.status = "SUCCESS"
         push_webhook("TEST", self)
 
+    def cleanup(self):
+        shutil.rmtree(self.build_folder)
+
 
 class UpdateCIJob(Job):
     def update_ci(self):
@@ -233,7 +239,7 @@ class UpdateCIJob(Job):
                             "-o",
                             "StrictHostKeyChecking=accept-new",
                             ip,
-                            f"cd {CI_PATH}/update && git pull --ff-only origin main",
+                            f"cd {CI_PATH} && git pull --ff-only origin main",
                         ],
                         timeout=60 * 2,
                         check=True,
