@@ -7,7 +7,6 @@ from dataclasses import dataclass
 from queue import Queue
 from socket import socket
 
-from builder import BUILD_QUEUE
 from colors import blue, red
 from config import GITHUB_TOKEN, GITHUB_USERNAME, IPS
 from jobs import CommitInfo, Job
@@ -209,6 +208,8 @@ class TestingJob(DistributionJob):
 
 class UpdateCIJob(Job):
     def update_ci(self):
+        from builder import BUILD_QUEUE  # noqa: PLC0415
+
         BUILD_QUEUE.join()
         distribution_queue.join()
 
