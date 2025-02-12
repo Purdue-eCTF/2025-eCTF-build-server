@@ -239,7 +239,7 @@ class UpdateCIJob(Job):
                         check=True,
                         stdout=subprocess.PIPE,
                         stderr=subprocess.PIPE,
-                        input=f"{GITHUB_USERNAME}\n{GITHUB_TOKEN}\n",
+                        input=f"{GITHUB_USERNAME}\n{GITHUB_TOKEN}\n".encode(),
                     )
                     self.conn.sendall(output.stdout)
                     self.conn.sendall(output.stderr)
