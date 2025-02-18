@@ -36,7 +36,7 @@ def serve():
                     continue
 
                 if method == "build-ours":
-                    conn.sendall(b"Building our design\n")
+                    conn.sendall(b"[CONN] Building our design\n")
                     hash, author, name, run_id = (
                         conn.recv(1024).decode("utf-8").split("|")
                     )
@@ -44,7 +44,7 @@ def serve():
 
                     if len(hash) > 40 or len(hash) < 7 or re.search(r"[^0-9a-f]", hash):
                         print(f"[CONN] Invalid hash {hash}")
-                        conn.sendall(b"Invalid input!")
+                        conn.sendall(b"[CONN] Invalid input!")
                         conn.close()
                         continue
 
@@ -59,25 +59,18 @@ def serve():
                     add_to_build_queue(req)
                     push_webhook()
                 elif method == "attack-target":
-                    conn.sendall(b"Uploading target design\n")
-                    team, path = (
-                        conn.recv(1024).decode("utf-8").split("|")
-                    )
+                    conn.sendall(b"[CONN] Attacking target design\n")
+                    team, path = conn.recv(1024).decode("utf-8").split("|")
 
                     for scenario in ["expired", "pirate", "nosub", "recording"]:
                         add_to_dist_queue(
                             AttackingJob(
-                                conn,
-                                "PENDING",
-                                time.time(),
-                                team,
-                                path,
-                                scenario
+                                conn, "PENDING", time.time(), team, path, scenario
                             )
                         )
                     push_webhook()
                 elif method == "update-ci":
-                    conn.sendall(b"Updating CI\n")
+                    conn.sendall(b"[CONN] Updating CI\n")
                     UpdateCIJob(conn, "PENDING", time.time()).update_ci()
 
             except Exception:  # noqa: BLE001

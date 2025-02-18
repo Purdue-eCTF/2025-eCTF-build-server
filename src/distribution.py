@@ -13,7 +13,7 @@ from jobs import CommitInfo, Job
 from webhook import push_webhook
 
 distribution_queue: Queue["DistributionJob"] = Queue()
-upload_status: dict[str, "TestServerStatus"] = {}
+upload_status: dict[str, "UploadServerStatus"] = {}
 server_queues: dict[str, Queue[str]] = {"TEST": Queue(), "ATTACK": Queue()}
 
 OUT_PATH = "~/ectf2025/build_out/"
@@ -219,6 +219,85 @@ class TestingJob(DistributionJob):
         shutil.rmtree(self.build_folder)
 
 
+class AttackingJob(DistributionJob):
+    def __init__(
+        self,
+        conn: socket,
+        status: str,
+        start_time: float,
+        name: str,
+        build_folder: str,
+        scenario: str,
+    ):
+        self.build_folder = build_folder
+        self.scenario = scenario
+        super().__init__(
+            conn,
+            status,
+            start_time,
+            name,
+            build_folder,
+            "ATTACK",
+            None,
+        )
+
+    def post_upload(self, ip: str):
+        # run attacks
+        self.log(blue(f"[ATTACK] Running attacks for {self.name} on {ip}\n"))
+
+        try:
+            output = subprocess.run(
+                [
+                    "ssh",
+                    "-F",
+                    "ssh_config",
+                    "-i",
+                    "id_ed25519",
+                    "-o",
+                    "StrictHostKeyChecking=accept-new",
+                    ip,
+                    f"{VENV} || exit 1; {CI_PATH}/run_attack_tests.sh {self.scenario};",
+                ],
+                timeout=60 * 10,
+                check=True,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+            )
+            self.conn.sendall(output.stdout)
+            self.conn.sendall(output.stderr)
+
+            # search for flags
+            potential_flags = set(
+                re.findall(
+                    r"ectf\{[a-zA-Z0-9_]+\}", output.stdout.decode(errors="replace")
+                )
+            )
+            # todo, submit
+        except subprocess.SubprocessError as e:
+            self.on_error(e, f"[ATTACK] Attacks failed for {self.name}")
+
+            self.status = "FAILED"
+            push_webhook("TEST", self)
+            return
+
+        self.log(blue(f"[ATTACK] ATTACK OK for {self.name}"))
+        self.conn.sendall(b"%*&0\n")
+        self.conn.close()
+        self.status = "SUCCESS"
+        push_webhook("TEST", self)
+
+
+def distribution_loop():
+    while True:
+        req = distribution_queue.get()
+        avail_ip = server_queues[req.queue_type].get()
+        req.status = "TESTING"
+        req.start_time = time.time()
+        upload_status[avail_ip].job = req
+        push_webhook()
+        threading.Thread(target=req.distribute, args=(avail_ip,), daemon=True).start()
+
+
 class UpdateCIJob(Job):
     def update_ci(self):
         from builder import BUILD_QUEUE  # noqa: PLC0415
@@ -267,80 +346,8 @@ class UpdateCIJob(Job):
         self.status = "SUCCESS"
 
 
-class AttackingJob(DistributionJob):
-    def __init__(
-        self,
-        conn: socket,
-        status: str,
-        start_time: float,
-        name: str,
-        build_folder: str,
-        scenario: str,
-    ):
-        self.build_folder = build_folder
-        self.scenario = scenario
-        super().__init__(
-            conn, status, start_time, name, build_folder, None, "ATTACK"
-        )
-
-    def post_upload(self, ip: str):
-        # run attacks
-        self.log(blue(f"[ATTACK] Running attacks for {self.name} on {ip}\n"))
-
-        try:
-            output = subprocess.run(
-                [
-                    "ssh",
-                    "-F",
-                    "ssh_config",
-                    "-i",
-                    "id_ed25519",
-                    "-o",
-                    "StrictHostKeyChecking=accept-new",
-                    ip,
-                    f"{VENV} || exit 1; {CI_PATH}/run_attack_tests.sh {self.scenario};",
-                ],
-                timeout=60 * 10,
-                check=True,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
-            )
-            self.conn.sendall(output.stdout)
-            self.conn.sendall(output.stderr)
-
-            # search for flags
-            potential_flags = set(
-                re.findall(r"ectf\{[a-zA-Z0-9_]+\}",
-                           output.stdout.decode(errors="replace")
-            ))
-            # todo, submit
-        except subprocess.SubprocessError as e:
-            self.on_error(e, f"[ATTACK] Attacks failed for {self.name}")
-
-            self.status = "FAILED"
-            push_webhook("TEST", self)
-            return
-
-        self.log(blue(f"[ATTACK] ATTACK OK for {self.name}"))
-        self.conn.sendall(b"%*&0\n")
-        self.conn.close()
-        self.status = "SUCCESS"
-        push_webhook("TEST", self)
-
-
-def distribution_loop():
-    while True:
-        req = distribution_queue.get()
-        avail_ip = server_queues[req.queue_type].get()
-        req.status = "TESTING"
-        req.start_time = time.time()
-        upload_status[avail_ip].job = req
-        push_webhook()
-        threading.Thread(target=req.distribute, args=(avail_ip,), daemon=True).start()
-
-
 @dataclass
-class TestServerStatus:
+class UploadServerStatus:
     job: DistributionJob | None = None
     connected: bool = True
 
@@ -359,7 +366,7 @@ def init_distribution_queue():
             f.write(
                 f"Host {ip.split('@')[1]}\nProxyCommand cloudflared access ssh --hostname %h\n"
             )
-            upload_status[ip] = TestServerStatus()
+            upload_status[ip] = UploadServerStatus()
             server_queues[queue_type].put(ip)
     push_webhook()
     print(blue(f"[DIST] Loaded {len(IPS)} ips"))
