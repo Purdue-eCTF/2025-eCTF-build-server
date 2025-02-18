@@ -4,6 +4,7 @@ import subprocess
 import threading
 import time
 from dataclasses import dataclass
+from pathlib import Path
 from queue import Queue
 from socket import socket
 
@@ -41,6 +42,7 @@ class DistributionJob(Job):
         self.start_time = time.time()
         push_webhook("TEST", self)
 
+        firmware_file = Path(self.in_path).name
         try:
             # upload to server
             self.log(blue(f"[DIST] Uploading {self.name} to {ip}"))
@@ -53,7 +55,7 @@ class DistributionJob(Job):
                         "--progress",
                         "--delete",
                         "--ignore-times",
-                        f"{self.in_path}/",
+                        f"{self.in_path}",
                         f"{ip}:{OUT_PATH}",
                     ],
                     timeout=60 * 2,
@@ -93,7 +95,7 @@ class DistributionJob(Job):
                         "-o",
                         "StrictHostKeyChecking=accept-new",
                         ip,
-                        f"{VENV} || exit 1; {CI_PATH}/update {OUT_PATH}/max78000.bin; exit_code=$?; rm -rf {OUT_PATH}; exit $exit_code",
+                        f"{VENV} || exit 1; {CI_PATH}/update {OUT_PATH}/{firmware_file}; exit_code=$?; rm -rf {OUT_PATH}; exit $exit_code",
                     ],
                     timeout=60 * 2,
                     check=True,
@@ -143,7 +145,7 @@ class TestingJob(DistributionJob):
             status,
             start_time,
             name,
-            build_folder + "/build_out/",
+            build_folder + "/build_out/max78000.bin",
             "TEST",
             commit,
         )
@@ -226,17 +228,24 @@ class AttackingJob(DistributionJob):
         status: str,
         start_time: float,
         name: str,
-        build_folder: str,
+        target_folder: str,
         scenario: str,
     ):
-        self.build_folder = build_folder
         self.scenario = scenario
+        self.target_folder = target_folder
         super().__init__(
             conn,
             status,
             start_time,
             name,
-            build_folder,
+            str(
+                next(
+                    Path(target_folder)
+                    .joinpath("firmware")
+                    .joinpath(scenario)
+                    .glob("*.prot")
+                )
+            ),
             "ATTACK",
             None,
         )
