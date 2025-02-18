@@ -275,10 +275,13 @@ class AttackingJob(DistributionJob):
         start_time: float,
         name: str,
         build_folder: str,
-        commit: CommitInfo | None = None,
+        scenario: str,
     ):
         self.build_folder = build_folder
-        super().__init__(conn, status, start_time, name, build_folder, "ATTACK", commit)
+        self.scenario = scenario
+        super().__init__(
+            conn, status, start_time, name, build_folder, None, "ATTACK"
+        )
 
     def post_upload(self, ip: str):
         # run attacks
@@ -295,7 +298,7 @@ class AttackingJob(DistributionJob):
                     "-o",
                     "StrictHostKeyChecking=accept-new",
                     ip,
-                    f"{VENV} || exit 1; {CI_PATH}/run_attack_tests.sh;",
+                    f"{VENV} || exit 1; {CI_PATH}/run_attack_tests.sh {self.scenario};",
                 ],
                 timeout=60 * 10,
                 check=True,
@@ -307,8 +310,9 @@ class AttackingJob(DistributionJob):
 
             # search for flags
             potential_flags = set(
-                re.findall(r"ectf\{[a-zA-Z0-9_]+\}", output.stdout.decode())
-            )
+                re.findall(r"ectf\{[a-zA-Z0-9_]+\}",
+                           output.stdout.decode(errors="replace")
+            ))
             # todo, submit
         except subprocess.SubprocessError as e:
             self.on_error(e, f"[ATTACK] Attacks failed for {self.name}")

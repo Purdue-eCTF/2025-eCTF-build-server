@@ -59,17 +59,22 @@ def serve():
                     add_to_build_queue(req)
                     push_webhook()
                 elif method == "attack-target":
-                    conn.sendall(b"Attacking target design\n")
-                    team, path = conn.recv(1024).decode("utf-8").split("|")
-                    add_to_dist_queue(
-                        AttackingJob(
-                            conn,
-                            "PENDING",
-                            time.time(),
-                            team,
-                            path,
-                        )
+                    conn.sendall(b"Uploading target design\n")
+                    team, path = (
+                        conn.recv(1024).decode("utf-8").split("|")
                     )
+
+                    for scenario in ["expired", "pirate", "nosub", "recording"]:
+                        add_to_dist_queue(
+                            AttackingJob(
+                                conn,
+                                "PENDING",
+                                time.time(),
+                                team,
+                                path,
+                                scenario
+                            )
+                        )
                     push_webhook()
                 elif method == "update-ci":
                     conn.sendall(b"Updating CI\n")
