@@ -13,6 +13,7 @@ services:
             - decoder:/root/mounts/decoder
             - build_out:/root/mounts/build_out
             - secrets:/root/mounts/secrets
+            - ../scrape-bot/temp:/root/mounts/targets
 volumes:
     decoder:
     build_out:

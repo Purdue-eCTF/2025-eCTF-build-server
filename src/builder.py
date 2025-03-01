@@ -156,7 +156,6 @@ def build(job: BuildJob):
                 job.conn,
                 "PENDING",
                 time.time(),
-                job.commit.hash,
                 build_folder,
                 job.commit,
             )

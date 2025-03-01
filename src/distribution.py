@@ -19,6 +19,7 @@ server_queues: dict[str, Queue[str]] = {"TEST": Queue(), "ATTACK": Queue()}
 
 OUT_PATH = "~/ectf2025/build_out/"
 TEST_OUT_PATH = "~/ectf2025/test_out/"
+ATTACK_OUT_PATH = "~/ectf2025/attack_out/"
 CI_PATH = "~/ectf2025/CI/"
 VENV = ". ~/ectf2025/.venv/bin/activate"
 
@@ -135,16 +136,15 @@ class TestingJob(DistributionJob):
         conn: socket,
         status: str,
         start_time: float,
-        name: str,
         build_folder: str,
-        commit: CommitInfo | None = None,
+        commit: CommitInfo,
     ):
         self.build_folder = build_folder
         super().__init__(
             conn,
             status,
             start_time,
-            name,
+            commit.hash,
             build_folder + "/build_out/max78000.bin",
             "TEST",
             commit,
@@ -227,30 +227,53 @@ class AttackingJob(DistributionJob):
         conn: socket,
         status: str,
         start_time: float,
-        name: str,
-        target_folder: str,
+        team: str,
         scenario: str,
     ):
         self.scenario = scenario
-        self.target_folder = target_folder
+        self.target_folder = Path("~/mounts/targets/") / team
         super().__init__(
             conn,
             status,
             start_time,
-            name,
-            str(
-                next(
-                    Path(target_folder)
-                    .joinpath("firmware")
-                    .joinpath(scenario)
-                    .glob("*.prot")
-                )
-            ),
+            team,
+            str(self.target_folder / "attacker.prot"),
             "ATTACK",
             None,
         )
 
     def post_upload(self, ip: str):
+        # upload test data to server
+        self.log(blue(f"[ATTACK] Uploading test data to {ip}"))
+        try:
+            subprocess.run(
+                [
+                    "rsync",
+                    "--rsh=ssh -F ssh_config -i id_ed25519 -o StrictHostKeyChecking=accept-new",
+                    "-av",
+                    "--progress",
+                    "--delete",
+                    "--ignore-times",
+                    *[
+                        p
+                        for p in self.target_folder.iterdir()
+                        if p.is_file() and p.suffix != ".prot"
+                    ],
+                    self.target_folder / "design/design",
+                    f"{ip}:{ATTACK_OUT_PATH}",
+                ],
+                timeout=60 * 2,
+                check=True,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+            )
+        except subprocess.SubprocessError as e:
+            self.on_error(e, f"[TEST] Failed to upload to {ip}")
+
+            self.status = "FAILED"
+            push_webhook("TEST", self)
+            return
+
         # run attacks
         self.log(blue(f"[ATTACK] Running attacks for {self.name} on {ip}\n"))
 
@@ -286,14 +309,14 @@ class AttackingJob(DistributionJob):
             self.on_error(e, f"[ATTACK] Attacks failed for {self.name}")
 
             self.status = "FAILED"
-            push_webhook("TEST", self)
+            push_webhook("ATTACK", self)
             return
 
         self.log(blue(f"[ATTACK] ATTACK OK for {self.name}"))
         self.conn.sendall(b"%*&0\n")
         self.conn.close()
         self.status = "SUCCESS"
-        push_webhook("TEST", self)
+        push_webhook("ATTACK", self)
 
 
 def distribution_loop():
