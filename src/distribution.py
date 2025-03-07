@@ -251,7 +251,7 @@ class AttackingJob(DistributionJob):
         self.log(blue(f"[ATTACK] Uploading test data to {ip}"))
 
         with (self.target_folder / "ports.txt").open("w") as f:
-            f.write(" ".join(self.target_ip, *self.target_ports))
+            f.write(" ".join([self.target_ip, *self.target_ports]))
 
         try:
             subprocess.run(
