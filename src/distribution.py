@@ -233,7 +233,7 @@ class AttackingJob(DistributionJob):
         target_ports: list[str],
     ):
         self.scenario = scenario
-        self.target_folder = Path("~/mounts/targets/") / team
+        self.target_folder = Path("~/mounts/targets/").expanduser() / team
         self.target_ip = target_ip
         self.target_ports = target_ports
         super().__init__(
