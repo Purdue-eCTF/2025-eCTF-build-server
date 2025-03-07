@@ -60,16 +60,12 @@ def serve():
                     push_webhook()
                 elif method == "attack-target":
                     conn.sendall(b"[CONN] Attacking target design\n")
-                    team = conn.recv(1024).decode("utf-8")
+                    team, ip, *ports = conn.recv(1024).decode("utf-8").split("|")
 
                     for scenario in ["expired", "pirate", "nosub", "recording"]:
                         add_to_dist_queue(
                             AttackingJob(
-                                conn,
-                                "PENDING",
-                                time.time(),
-                                team,
-                                scenario,
+                                conn, "PENDING", time.time(), team, scenario, ip, ports
                             )
                         )
                     push_webhook()

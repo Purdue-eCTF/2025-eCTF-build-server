@@ -229,9 +229,13 @@ class AttackingJob(DistributionJob):
         start_time: float,
         team: str,
         scenario: str,
+        target_ip: str,
+        target_ports: list[str],
     ):
         self.scenario = scenario
         self.target_folder = Path("~/mounts/targets/") / team
+        self.target_ip = target_ip
+        self.target_ports = target_ports
         super().__init__(
             conn,
             status,
@@ -245,6 +249,10 @@ class AttackingJob(DistributionJob):
     def post_upload(self, ip: str):
         # upload test data to server
         self.log(blue(f"[ATTACK] Uploading test data to {ip}"))
+
+        with (self.target_folder / "ports.txt").open("w") as f:
+            f.write(" ".join(self.target_ip, *self.target_ports))
+
         try:
             subprocess.run(
                 [
