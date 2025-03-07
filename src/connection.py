@@ -62,12 +62,9 @@ def serve():
                     conn.sendall(b"[CONN] Attacking target design\n")
                     team, ip, *ports = conn.recv(1024).decode("utf-8").split("|")
 
-                    for scenario in ["expired", "pirate", "nosub", "recording"]:
-                        add_to_dist_queue(
-                            AttackingJob(
-                                conn, "PENDING", time.time(), team, scenario, ip, ports
-                            )
-                        )
+                    add_to_dist_queue(
+                        AttackingJob(conn, "PENDING", time.time(), team, ip, ports)
+                    )
                     push_webhook()
                 elif method == "update-ci":
                     conn.sendall(b"[CONN] Updating CI\n")

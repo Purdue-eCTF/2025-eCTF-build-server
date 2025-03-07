@@ -228,11 +228,10 @@ class AttackingJob(DistributionJob):
         status: str,
         start_time: float,
         team: str,
-        scenario: str,
         target_ip: str,
         target_ports: list[str],
     ):
-        self.scenario = scenario
+        self.team = team
         self.target_folder = Path("~/mounts/targets/").expanduser() / team
         self.target_ip = target_ip
         self.target_ports = target_ports
@@ -251,7 +250,7 @@ class AttackingJob(DistributionJob):
         self.log(blue(f"[ATTACK] Uploading test data to {ip}"))
 
         with (self.target_folder / "ports.txt").open("w") as f:
-            f.write(" ".join([self.target_ip, *self.target_ports]))
+            f.write(" ".join([self.team, self.target_ip, *self.target_ports]))
 
         try:
             subprocess.run(
@@ -296,7 +295,7 @@ class AttackingJob(DistributionJob):
                     "-o",
                     "StrictHostKeyChecking=accept-new",
                     ip,
-                    f"{VENV} || exit 1; {CI_PATH}/run_attack_tests.sh {self.scenario};",
+                    f"{VENV} || exit 1; {CI_PATH}/run_attack_tests.sh;",
                 ],
                 timeout=60 * 10,
                 check=True,
