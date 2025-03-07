@@ -96,7 +96,7 @@ class DistributionJob(Job):
                         "-o",
                         "StrictHostKeyChecking=accept-new",
                         ip,
-                        f"{VENV} || exit 1; {CI_PATH}/update {OUT_PATH}/{firmware_file}; exit_code=$?; rm -rf {OUT_PATH}; exit $exit_code",
+                        f"{VENV} || exit 1; {CI_PATH}/update {OUT_PATH}/{firmware_file};",
                     ],
                     timeout=60 * 2,
                     check=True,
