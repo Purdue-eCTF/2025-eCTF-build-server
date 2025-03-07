@@ -37,7 +37,7 @@ class Job:
 
     def on_error(self, e: Exception, msg: str):
         self.log(red(msg))
-        if isinstance(e, subprocess.CalledProcessError):
+        if isinstance(e, (subprocess.CalledProcessError, subprocess.TimeoutExpired)):
             self.conn.sendall(e.stdout or b"")
             self.conn.sendall(e.stderr or b"")
         self.log(red(traceback.format_exc()))
