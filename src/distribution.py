@@ -124,7 +124,7 @@ class DistributionJob(Job):
             distribution_queue.task_done()
 
     def cleanup(self):
-        shutil.rmtree(self.in_path)
+        pass
 
     def post_upload(self, ip: str):
         pass
