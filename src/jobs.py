@@ -1,3 +1,4 @@
+import re
 import subprocess
 import traceback
 from dataclasses import dataclass
@@ -27,12 +28,15 @@ class Job:
     conn: socket
     status: str
     start_time: float
+    socket_colors: bool = True
 
     def to_json(self):
         return {}
 
     def log(self, msg: str):
         print(msg)
+        if not self.socket_colors:
+            msg = re.sub(r"\x1b\[[0-9;]*m", "", msg)
         self.conn.sendall(msg.encode() + b"\n")
 
     def on_error(self, e: Exception, msg: str):
@@ -46,9 +50,12 @@ class Job:
         self.status = "FAILED"
 
 
-@dataclass
 class BuildJob(Job):
     commit: CommitInfo
+
+    def __init__(self, conn, status, start_time, commit):
+        self.commit = commit
+        super().__init__(conn=conn, status=status, start_time=start_time)
 
     def to_json(self):
         return {

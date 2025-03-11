@@ -1,7 +1,5 @@
-import re
 import shutil
 import subprocess
-import tempfile
 import threading
 import time
 from dataclasses import dataclass
@@ -145,13 +143,13 @@ class TestingJob(DistributionJob):
     ):
         self.build_folder = build_folder
         super().__init__(
-            conn,
-            status,
-            start_time,
-            commit.hash,
-            build_folder + "/build_out/max78000.bin",
-            "TEST",
-            commit,
+            conn=conn,
+            status=status,
+            start_time=start_time,
+            name=commit.hash,
+            in_path=build_folder + "/build_out/max78000.bin",
+            queue_type="TEST",
+            commit=commit,
         )
 
     def post_upload(self, ip: str):
@@ -227,13 +225,14 @@ class AttackingJob(DistributionJob):
         self.team = team
         self.target_folder = Path("~/mounts/targets/").expanduser() / team
         super().__init__(
-            conn,
-            status,
-            start_time,
-            team,
-            str(self.target_folder / "attacker.prot"),
-            "ATTACK",
-            None,
+            conn=conn,
+            status=status,
+            start_time=start_time,
+            name=team,
+            in_path=str(self.target_folder / "attacker.prot"),
+            queue_type="ATTACK",
+            commit=None,
+            socket_colors=False,  # scrape-bot specific
         )
 
     def post_upload(self, ip: str):
@@ -311,13 +310,14 @@ class AttackScriptJob(DistributionJob):
         self.target_folder = Path("~/mounts/targets/").expanduser() / team
         self.script_path = Path("~/mounts/scripts/").expanduser() / script_name
         super().__init__(
-            conn,
-            status,
-            start_time,
-            team,
-            str(self.target_folder / "attacker.prot"),
-            "ATTACK",
-            None,
+            conn=conn,
+            status=status,
+            start_time=start_time,
+            name=team,
+            in_path=str(self.target_folder / "attacker.prot"),
+            queue_type="ATTACK",
+            commit=None,
+            socket_colors=False,  # scrape-bot specific
         )
 
     def post_upload(self, ip: str):
