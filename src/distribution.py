@@ -49,22 +49,7 @@ class DistributionJob(Job):
             # upload to server
             self.log(blue(f"[DIST] Uploading {self.name} to {ip}"))
             try:
-                subprocess.run(
-                    [
-                        "rsync",
-                        "--rsh=ssh -F ssh_config -i id_ed25519 -o StrictHostKeyChecking=accept-new",
-                        "-av",
-                        "--progress",
-                        "--delete",
-                        "--ignore-times",
-                        f"{self.in_path}",
-                        f"{ip}:{OUT_PATH}",
-                    ],
-                    timeout=60 * 2,
-                    check=True,
-                    stdout=subprocess.PIPE,
-                    stderr=subprocess.PIPE,
-                )
+                self.upload(ip, [self.in_path], OUT_PATH)
             except subprocess.SubprocessError as e:
                 if (
                     isinstance(e, subprocess.CalledProcessError)
@@ -124,6 +109,24 @@ class DistributionJob(Job):
                 self.cleanup()
             distribution_queue.task_done()
 
+    def upload(self, ip: str, files: list[Path | str], out_path: str):
+        subprocess.run(
+            [
+                "rsync",
+                "--rsh=ssh -F ssh_config -i id_ed25519 -o StrictHostKeyChecking=accept-new",
+                "-av",
+                "--progress",
+                "--delete",
+                "--ignore-times",
+                *files,
+                f"{ip}:{out_path}",
+            ],
+            timeout=60 * 2,
+            check=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+        )
+
     def cleanup(self):
         pass
 
@@ -158,22 +161,13 @@ class TestingJob(DistributionJob):
         # upload test data to server
         self.log(blue(f"[TEST] Uploading test data to {ip}"))
         try:
-            subprocess.run(
+            self.upload(
+                ip,
                 [
-                    "rsync",
-                    "--rsh=ssh -F ssh_config -i id_ed25519 -o StrictHostKeyChecking=accept-new",
-                    "-av",
-                    "--progress",
-                    "--delete",
-                    "--ignore-times",
                     f"{self.build_folder}/design",
                     f"{self.build_folder}/secrets/global.secrets",
-                    f"{ip}:{TEST_OUT_PATH}",
                 ],
-                timeout=60 * 2,
-                check=True,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
+                TEST_OUT_PATH,
             )
         except subprocess.SubprocessError as e:
             self.on_error(e, f"[TEST] Failed to upload to {ip}")
@@ -254,27 +248,19 @@ class AttackingJob(DistributionJob):
             ports_file.write(" ".join([self.team, self.target_ip, *self.target_ports]))
 
             try:
-                subprocess.run(
+                target_files = [
+                    p
+                    for p in self.target_folder.iterdir()
+                    if p.is_file() and p.suffix != ".prot"
+                ]
+                self.upload(
+                    ip,
                     [
-                        "rsync",
-                        "--rsh=ssh -F ssh_config -i id_ed25519 -o StrictHostKeyChecking=accept-new",
-                        "-av",
-                        "--progress",
-                        "--delete",
-                        "--ignore-times",
-                        *[
-                            p
-                            for p in self.target_folder.iterdir()
-                            if p.is_file() and p.suffix != ".prot"
-                        ],
+                        *target_files,
                         self.target_folder / "design/design",
                         ports_file.name,
-                        f"{ip}:{ATTACK_OUT_PATH}",
                     ],
-                    timeout=60 * 2,
-                    check=True,
-                    stdout=subprocess.PIPE,
-                    stderr=subprocess.PIPE,
+                    ATTACK_OUT_PATH,
                 )
             except subprocess.SubprocessError as e:
                 self.on_error(e, f"[TEST] Failed to upload to {ip}")
@@ -353,28 +339,20 @@ class AttackScriptJob(DistributionJob):
         with tempfile.NamedTemporaryFile("w") as ports_file:
             ports_file.write(" ".join([self.team, self.target_ip, *self.target_ports]))
             try:
-                subprocess.run(
+                target_files = [
+                    p
+                    for p in self.target_folder.iterdir()
+                    if p.is_file() and p.suffix != ".prot"
+                ]
+                self.upload(
+                    ip,
                     [
-                        "rsync",
-                        "--rsh=ssh -F ssh_config -i id_ed25519 -o StrictHostKeyChecking=accept-new",
-                        "-av",
-                        "--progress",
-                        "--delete",
-                        "--ignore-times",
-                        *[
-                            p
-                            for p in self.target_folder.iterdir()
-                            if p.is_file() and p.suffix != ".prot"
-                        ],
+                        *target_files,
                         self.target_folder / "design/design",
                         ports_file.name,
                         self.script_path,
-                        f"{ip}:{ATTACK_OUT_PATH}",
                     ],
-                    timeout=60 * 2,
-                    check=True,
-                    stdout=subprocess.PIPE,
-                    stderr=subprocess.PIPE,
+                    ATTACK_OUT_PATH,
                 )
             except subprocess.SubprocessError as e:
                 self.on_error(e, f"[TEST] Failed to upload to {ip}")
