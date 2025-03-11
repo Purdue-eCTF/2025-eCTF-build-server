@@ -60,17 +60,12 @@ def serve():
                     push_webhook()
                 elif method == "attack-target":
                     conn.sendall(b"[CONN] Attacking target design\n")
-                    team, ip, *ports = conn.recv(1024).decode("utf-8").split("|")
-
-                    add_to_dist_queue(
-                        AttackingJob(conn, "PENDING", time.time(), team, ip, ports)
-                    )
+                    team = conn.recv(1024).decode("utf-8")
+                    add_to_dist_queue(AttackingJob(conn, "PENDING", time.time(), team))
                     push_webhook()
                 elif method == "attack-script":
                     conn.sendall(b"[CONN] Attacking target with manual attack script\n")
-                    script_name, team, ip, *ports = (
-                        conn.recv(1024).decode("utf-8").split("|")
-                    )
+                    script_name, team = conn.recv(1024).decode("utf-8").split("|")
                     if "/" in script_name:
                         print(f"[CONN] Invalid script name {script_name}")
                         conn.sendall(
@@ -80,9 +75,7 @@ def serve():
                         continue
 
                     add_to_dist_queue(
-                        AttackScriptJob(
-                            conn, "PENDING", time.time(), team, ip, ports, script_name
-                        )
+                        AttackScriptJob(conn, "PENDING", time.time(), team, script_name)
                     )
                 elif method == "update-ci":
                     conn.sendall(b"[CONN] Updating CI\n")

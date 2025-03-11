@@ -223,13 +223,9 @@ class AttackingJob(DistributionJob):
         status: str,
         start_time: float,
         team: str,
-        target_ip: str,
-        target_ports: list[str],
     ):
         self.team = team
         self.target_folder = Path("~/mounts/targets/").expanduser() / team
-        self.target_ip = target_ip
-        self.target_ports = target_ports
         super().__init__(
             conn,
             status,
@@ -244,30 +240,26 @@ class AttackingJob(DistributionJob):
         # upload test data to server
         self.log(blue(f"[ATTACK] Uploading test data to {ip}"))
 
-        with tempfile.NamedTemporaryFile("w") as ports_file:
-            ports_file.write(" ".join([self.team, self.target_ip, *self.target_ports]))
+        try:
+            target_files = [
+                p
+                for p in self.target_folder.iterdir()
+                if p.is_file() and p.suffix != ".prot"
+            ]
+            self.upload(
+                ip,
+                [
+                    *target_files,
+                    self.target_folder / "design/design",
+                ],
+                ATTACK_OUT_PATH,
+            )
+        except subprocess.SubprocessError as e:
+            self.on_error(e, f"[TEST] Failed to upload to {ip}")
 
-            try:
-                target_files = [
-                    p
-                    for p in self.target_folder.iterdir()
-                    if p.is_file() and p.suffix != ".prot"
-                ]
-                self.upload(
-                    ip,
-                    [
-                        *target_files,
-                        self.target_folder / "design/design",
-                        ports_file.name,
-                    ],
-                    ATTACK_OUT_PATH,
-                )
-            except subprocess.SubprocessError as e:
-                self.on_error(e, f"[TEST] Failed to upload to {ip}")
-
-                self.status = "FAILED"
-                push_webhook("TEST", self)
-                return
+            self.status = "FAILED"
+            push_webhook("TEST", self)
+            return
 
         # run attacks
         self.log(blue(f"[ATTACK] Running attacks for {self.name} on {ip}\n"))
@@ -313,15 +305,11 @@ class AttackScriptJob(DistributionJob):
         status: str,
         start_time: float,
         team: str,
-        target_ip: str,
-        target_ports: list[str],
         script_name: str,
     ):
         self.team = team
         self.target_folder = Path("~/mounts/targets/").expanduser() / team
         self.script_path = Path("~/mounts/scripts/").expanduser() / script_name
-        self.target_ip = target_ip
-        self.target_ports = target_ports
         super().__init__(
             conn,
             status,
@@ -336,30 +324,27 @@ class AttackScriptJob(DistributionJob):
         # upload test data to server
         self.log(blue(f"[ATTACK] Uploading test data to {ip}"))
 
-        with tempfile.NamedTemporaryFile("w") as ports_file:
-            ports_file.write(" ".join([self.team, self.target_ip, *self.target_ports]))
-            try:
-                target_files = [
-                    p
-                    for p in self.target_folder.iterdir()
-                    if p.is_file() and p.suffix != ".prot"
-                ]
-                self.upload(
-                    ip,
-                    [
-                        *target_files,
-                        self.target_folder / "design/design",
-                        ports_file.name,
-                        self.script_path,
-                    ],
-                    ATTACK_OUT_PATH,
-                )
-            except subprocess.SubprocessError as e:
-                self.on_error(e, f"[TEST] Failed to upload to {ip}")
+        try:
+            target_files = [
+                p
+                for p in self.target_folder.iterdir()
+                if p.is_file() and p.suffix != ".prot"
+            ]
+            self.upload(
+                ip,
+                [
+                    *target_files,
+                    self.target_folder / "design/design",
+                    self.script_path,
+                ],
+                ATTACK_OUT_PATH,
+            )
+        except subprocess.SubprocessError as e:
+            self.on_error(e, f"[TEST] Failed to upload to {ip}")
 
-                self.status = "FAILED"
-                push_webhook("TEST", self)
-                return
+            self.status = "FAILED"
+            push_webhook("TEST", self)
+            return
 
         # run attacks
         self.log(blue(f"[ATTACK] Running attacks for {self.name} on {ip}\n"))
