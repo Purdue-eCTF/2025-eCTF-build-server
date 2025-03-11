@@ -156,7 +156,7 @@ class TestingJob(DistributionJob):
 
     def post_upload(self, ip: str):
         # run tests
-        self.log(blue(f"[TEST] Running tests for {self.name}\n"))
+        self.log(blue(f"[TEST] Running tests for {self.name}"))
 
         # upload test data to server
         self.log(blue(f"[TEST] Uploading test data to {ip}"))
@@ -262,7 +262,7 @@ class AttackingJob(DistributionJob):
             return
 
         # run attacks
-        self.log(blue(f"[ATTACK] Running attacks for {self.name} on {ip}\n"))
+        self.log(blue(f"[ATTACK] Running attacks for {self.name} on {ip}"))
 
         try:
             output = subprocess.run(
@@ -347,7 +347,7 @@ class AttackScriptJob(DistributionJob):
             return
 
         # run attacks
-        self.log(blue(f"[ATTACK] Running attacks for {self.name} on {ip}\n"))
+        self.log(blue(f"[ATTACK] Running attacks for {self.name} on {ip}"))
 
         try:
             remote_script_path = Path(TEST_OUT_PATH) / self.script_path.name
