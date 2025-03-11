@@ -150,6 +150,7 @@ class TestingJob(DistributionJob):
             in_path=build_folder + "/build_out/max78000.bin",
             queue_type="TEST",
             commit=commit,
+            socket_colors=True,
         )
 
     def post_upload(self, ip: str):
@@ -396,6 +397,9 @@ def distribution_loop():
 
 
 class UpdateCIJob(Job):
+    def __init__(self, conn, status, start_time):
+        super().__init__(conn, status, start_time, socket_colors=True)
+
     def update_ci(self):
         from builder import BUILD_QUEUE  # noqa: PLC0415
 

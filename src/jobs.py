@@ -28,7 +28,7 @@ class Job:
     conn: socket
     status: str
     start_time: float
-    socket_colors: bool = True
+    socket_colors: bool
 
     def to_json(self):
         return {}
@@ -55,7 +55,9 @@ class BuildJob(Job):
 
     def __init__(self, conn, status, start_time, commit):
         self.commit = commit
-        super().__init__(conn=conn, status=status, start_time=start_time)
+        super().__init__(
+            conn=conn, status=status, start_time=start_time, socket_colors=True
+        )
 
     def to_json(self):
         return {
