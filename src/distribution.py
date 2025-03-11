@@ -1,6 +1,7 @@
 import re
 import shutil
 import subprocess
+import tempfile
 import threading
 import time
 from dataclasses import dataclass
@@ -249,37 +250,38 @@ class AttackingJob(DistributionJob):
         # upload test data to server
         self.log(blue(f"[ATTACK] Uploading test data to {ip}"))
 
-        with (self.target_folder / "ports.txt").open("w") as f:
-            f.write(" ".join([self.team, self.target_ip, *self.target_ports]))
+        with tempfile.NamedTemporaryFile("w") as ports_file:
+            ports_file.write(" ".join([self.team, self.target_ip, *self.target_ports]))
 
-        try:
-            subprocess.run(
-                [
-                    "rsync",
-                    "--rsh=ssh -F ssh_config -i id_ed25519 -o StrictHostKeyChecking=accept-new",
-                    "-av",
-                    "--progress",
-                    "--delete",
-                    "--ignore-times",
-                    *[
-                        p
-                        for p in self.target_folder.iterdir()
-                        if p.is_file() and p.suffix != ".prot"
+            try:
+                subprocess.run(
+                    [
+                        "rsync",
+                        "--rsh=ssh -F ssh_config -i id_ed25519 -o StrictHostKeyChecking=accept-new",
+                        "-av",
+                        "--progress",
+                        "--delete",
+                        "--ignore-times",
+                        *[
+                            p
+                            for p in self.target_folder.iterdir()
+                            if p.is_file() and p.suffix != ".prot"
+                        ],
+                        self.target_folder / "design/design",
+                        ports_file.name,
+                        f"{ip}:{ATTACK_OUT_PATH}",
                     ],
-                    self.target_folder / "design/design",
-                    f"{ip}:{ATTACK_OUT_PATH}",
-                ],
-                timeout=60 * 2,
-                check=True,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
-            )
-        except subprocess.SubprocessError as e:
-            self.on_error(e, f"[TEST] Failed to upload to {ip}")
+                    timeout=60 * 2,
+                    check=True,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE,
+                )
+            except subprocess.SubprocessError as e:
+                self.on_error(e, f"[TEST] Failed to upload to {ip}")
 
-            self.status = "FAILED"
-            push_webhook("TEST", self)
-            return
+                self.status = "FAILED"
+                push_webhook("TEST", self)
+                return
 
         # run attacks
         self.log(blue(f"[ATTACK] Running attacks for {self.name} on {ip}\n"))
@@ -304,14 +306,107 @@ class AttackingJob(DistributionJob):
             )
             self.conn.sendall(output.stdout)
             self.conn.sendall(output.stderr)
+        except subprocess.SubprocessError as e:
+            self.on_error(e, f"[ATTACK] Attacks failed for {self.name}")
 
-            # search for flags
-            potential_flags = set(
-                re.findall(
-                    r"ectf\{[a-zA-Z0-9_]+\}", output.stdout.decode(errors="replace")
+            self.status = "FAILED"
+            push_webhook("ATTACK", self)
+            return
+
+        self.log(blue(f"[ATTACK] ATTACK OK for {self.name}"))
+        self.conn.sendall(b"%*&0\n")
+        self.conn.close()
+        self.status = "SUCCESS"
+        push_webhook("ATTACK", self)
+
+
+class AttackScriptJob(DistributionJob):
+    def __init__(
+        self,
+        conn: socket,
+        status: str,
+        start_time: float,
+        team: str,
+        target_ip: str,
+        target_ports: list[str],
+        script_name: str,
+    ):
+        self.team = team
+        self.target_folder = Path("~/mounts/targets/").expanduser() / team
+        self.script_path = Path("~/mounts/scripts/").expanduser() / script_name
+        self.target_ip = target_ip
+        self.target_ports = target_ports
+        super().__init__(
+            conn,
+            status,
+            start_time,
+            team,
+            str(self.target_folder / "attacker.prot"),
+            "ATTACK",
+            None,
+        )
+
+    def post_upload(self, ip: str):
+        # upload test data to server
+        self.log(blue(f"[ATTACK] Uploading test data to {ip}"))
+
+        with tempfile.NamedTemporaryFile("w") as ports_file:
+            ports_file.write(" ".join([self.team, self.target_ip, *self.target_ports]))
+            try:
+                subprocess.run(
+                    [
+                        "rsync",
+                        "--rsh=ssh -F ssh_config -i id_ed25519 -o StrictHostKeyChecking=accept-new",
+                        "-av",
+                        "--progress",
+                        "--delete",
+                        "--ignore-times",
+                        *[
+                            p
+                            for p in self.target_folder.iterdir()
+                            if p.is_file() and p.suffix != ".prot"
+                        ],
+                        self.target_folder / "design/design",
+                        ports_file.name,
+                        self.script_path,
+                        f"{ip}:{ATTACK_OUT_PATH}",
+                    ],
+                    timeout=60 * 2,
+                    check=True,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE,
                 )
+            except subprocess.SubprocessError as e:
+                self.on_error(e, f"[TEST] Failed to upload to {ip}")
+
+                self.status = "FAILED"
+                push_webhook("TEST", self)
+                return
+
+        # run attacks
+        self.log(blue(f"[ATTACK] Running attacks for {self.name} on {ip}\n"))
+
+        try:
+            remote_script_path = Path(TEST_OUT_PATH) / self.script_path.name
+            output = subprocess.run(
+                [
+                    "ssh",
+                    "-F",
+                    "ssh_config",
+                    "-i",
+                    "id_ed25519",
+                    "-o",
+                    "StrictHostKeyChecking=accept-new",
+                    ip,
+                    f"{VENV} || exit 1; chmod +x {remote_script_path}; {remote_script_path}",
+                ],
+                timeout=60 * 10,
+                check=True,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
             )
-            # todo, submit
+            self.conn.sendall(output.stdout)
+            self.conn.sendall(output.stderr)
         except subprocess.SubprocessError as e:
             self.on_error(e, f"[ATTACK] Attacks failed for {self.name}")
 

@@ -7,7 +7,7 @@ import traceback
 from builder import add_to_build_queue
 from colors import blue
 from config import AUTH_TOKEN, PORT
-from distribution import AttackingJob, UpdateCIJob, add_to_dist_queue
+from distribution import AttackingJob, AttackScriptJob, UpdateCIJob, add_to_dist_queue
 from jobs import BuildJob, CommitInfo
 from webhook import push_webhook
 
@@ -44,7 +44,7 @@ def serve():
 
                     if len(hash) > 40 or len(hash) < 7 or re.search(r"[^0-9a-f]", hash):
                         print(f"[CONN] Invalid hash {hash}")
-                        conn.sendall(b"[CONN] Invalid input!")
+                        conn.sendall(f"[CONN] Invalid hash {hash}\n".encode())
                         conn.close()
                         continue
 
@@ -66,6 +66,24 @@ def serve():
                         AttackingJob(conn, "PENDING", time.time(), team, ip, ports)
                     )
                     push_webhook()
+                elif method == "attack-script":
+                    conn.sendall(b"[CONN] Attacking target with manual attack script\n")
+                    script_name, team, ip, *ports = (
+                        conn.recv(1024).decode("utf-8").split("|")
+                    )
+                    if "/" in script_name:
+                        print(f"[CONN] Invalid script name {script_name}")
+                        conn.sendall(
+                            f"[CONN] Invalid script name {script_name}\n".encode()
+                        )
+                        conn.close()
+                        continue
+
+                    add_to_dist_queue(
+                        AttackScriptJob(
+                            conn, "PENDING", time.time(), team, ip, ports, script_name
+                        )
+                    )
                 elif method == "update-ci":
                     conn.sendall(b"[CONN] Updating CI\n")
                     UpdateCIJob(conn, "PENDING", time.time()).update_ci()
