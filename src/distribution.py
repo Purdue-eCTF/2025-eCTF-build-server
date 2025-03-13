@@ -83,7 +83,7 @@ class DistributionJob(Job):
                         ip,
                         f"{VENV} || exit 1; {CI_PATH}/update {OUT_PATH}/{firmware_file} {'1' if self.attack_board else ''};",
                     ],
-                    timeout=60 * 2,
+                    timeout=60 * 4,
                     check=True,
                     stdout=subprocess.PIPE,
                     stderr=subprocess.PIPE,
@@ -240,8 +240,8 @@ class AttackingJob(DistributionJob):
         )
 
     def post_upload(self, ip: str):
-        # upload test data to server
-        self.log(blue(f"[ATTACK] Uploading test data to {ip}"))
+        # upload attack data to server
+        self.log(blue(f"[ATTACK] Uploading attack data to {ip}"))
 
         try:
             target_files = [
@@ -258,10 +258,10 @@ class AttackingJob(DistributionJob):
                 ATTACK_OUT_PATH,
             )
         except subprocess.SubprocessError as e:
-            self.on_error(e, f"[TEST] Failed to upload to {ip}")
+            self.on_error(e, f"[ATTACK] Failed to upload to {ip}")
 
             self.status = "FAILED"
-            push_webhook("TEST", self)
+            push_webhook("ATTACK", self)
             return
 
         # run attacks
@@ -326,8 +326,8 @@ class AttackScriptJob(DistributionJob):
         )
 
     def post_upload(self, ip: str):
-        # upload test data to server
-        self.log(blue(f"[ATTACK] Uploading test data to {ip}"))
+        # upload attack data to server
+        self.log(blue(f"[ATTACK] Uploading attack data to {ip}"))
 
         try:
             target_files = [
@@ -345,14 +345,14 @@ class AttackScriptJob(DistributionJob):
                 ATTACK_OUT_PATH,
             )
         except subprocess.SubprocessError as e:
-            self.on_error(e, f"[TEST] Failed to upload to {ip}")
+            self.on_error(e, f"[ATTACK] Failed to upload to {ip}")
 
             self.status = "FAILED"
-            push_webhook("TEST", self)
+            push_webhook("ATTACK", self)
             return
 
-        # run attacks
-        self.log(blue(f"[ATTACK] Running attacks for {self.name} on {ip}"))
+        # run attack
+        self.log(blue(f"[ATTACK] Running attack script for {self.name} on {ip}"))
 
         try:
             remote_script_path = Path(TEST_OUT_PATH) / self.script_path.name
