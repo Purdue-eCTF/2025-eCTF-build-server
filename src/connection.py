@@ -61,11 +61,19 @@ def serve():
                 elif method == "attack-target":
                     conn.sendall(b"[CONN] Attacking target design\n")
                     team = conn.recv(1024).decode("utf-8")
+
+                    if "/" in team:
+                        print(f"[CONN] Invalid team {team}")
+                        conn.sendall(f"[CONN] Invalid team{team}\n".encode())
+                        conn.close()
+                        continue
+
                     add_to_dist_queue(AttackingJob(conn, "PENDING", time.time(), team))
                     push_webhook()
                 elif method == "attack-script":
                     conn.sendall(b"[CONN] Attacking target with manual attack script\n")
                     script_name, team = conn.recv(1024).decode("utf-8").split("|")
+
                     if "/" in script_name:
                         print(f"[CONN] Invalid script name {script_name}")
                         conn.sendall(
@@ -77,6 +85,7 @@ def serve():
                     add_to_dist_queue(
                         AttackScriptJob(conn, "PENDING", time.time(), team, script_name)
                     )
+                    push_webhook()
                 elif method == "update-ci":
                     conn.sendall(b"[CONN] Updating CI\n")
                     UpdateCIJob(conn, "PENDING", time.time()).update_ci()
