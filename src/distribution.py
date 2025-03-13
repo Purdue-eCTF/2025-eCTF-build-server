@@ -234,7 +234,9 @@ class AttackingJob(DistributionJob):
             name=team,
             in_path=str(self.target_folder / "attacker.prot"),
             queue_type="ATTACK",
-            commit=None,
+            commit=CommitInfo(
+                "<:ChisatoScream:1331054827584884757>", team, "Automated attack tests", ""
+            ),
             socket_colors=False,  # scrape-bot specific
             attack_board=True,
         )
@@ -320,7 +322,9 @@ class AttackScriptJob(DistributionJob):
             name=team,
             in_path=str(self.target_folder / "attacker.prot"),
             queue_type="ATTACK",
-            commit=None,
+            commit=CommitInfo(
+                "<:ChisatoScream:1331054827584884757>", team, "Manual attack script", ""
+            ),
             socket_colors=False,  # scrape-bot specific
             attack_board=True,
         )
