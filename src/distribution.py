@@ -29,6 +29,7 @@ class DistributionJob(Job):
     in_path: str
     queue_type: str
     commit: CommitInfo | None = None
+    attack_board: bool
 
     def to_json(self):
         return {
@@ -80,7 +81,7 @@ class DistributionJob(Job):
                         "-o",
                         "StrictHostKeyChecking=accept-new",
                         ip,
-                        f"{VENV} || exit 1; {CI_PATH}/update {OUT_PATH}/{firmware_file};",
+                        f"{VENV} || exit 1; {CI_PATH}/update {OUT_PATH}/{firmware_file} {'1' if self.attack_board else ''};",
                     ],
                     timeout=60 * 2,
                     check=True,
@@ -151,6 +152,7 @@ class TestingJob(DistributionJob):
             queue_type="TEST",
             commit=commit,
             socket_colors=True,
+            attack_board=False,
         )
 
     def post_upload(self, ip: str):
@@ -234,6 +236,7 @@ class AttackingJob(DistributionJob):
             queue_type="ATTACK",
             commit=None,
             socket_colors=False,  # scrape-bot specific
+            attack_board=True,
         )
 
     def post_upload(self, ip: str):
@@ -319,6 +322,7 @@ class AttackScriptJob(DistributionJob):
             queue_type="ATTACK",
             commit=None,
             socket_colors=False,  # scrape-bot specific
+            attack_board=True,
         )
 
     def post_upload(self, ip: str):
