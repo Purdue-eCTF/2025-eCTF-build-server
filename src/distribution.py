@@ -28,8 +28,8 @@ class DistributionJob(Job):
     name: str
     in_path: str
     queue_type: str
-    commit: CommitInfo | None = None
     attack_board: bool
+    commit: CommitInfo | None = None
 
     def to_json(self):
         return {
