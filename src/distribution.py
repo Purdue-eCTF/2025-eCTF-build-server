@@ -278,7 +278,7 @@ class AttackingJob(DistributionJob):
                     "-o",
                     "StrictHostKeyChecking=accept-new",
                     ip,
-                    f"{VENV} || exit 1; {CI_PATH}/run_attack_tests.sh;",
+                    f"{VENV} || exit 1; {CI_PATH}/run_attack_tests.sh 1;",
                 ],
                 timeout=60 * 10,
                 check=True,
