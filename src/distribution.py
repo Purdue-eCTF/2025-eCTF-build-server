@@ -18,7 +18,6 @@ server_queues: dict[str, Queue[str]] = {"TEST": Queue(), "ATTACK": Queue()}
 
 OUT_PATH = "~/ectf2025/build_out/"
 TEST_OUT_PATH = "~/ectf2025/test_out/"
-ATTACK_OUT_PATH = "~/ectf2025/attack_out/"
 CI_PATH = "~/ectf2025/CI/"
 VENV = ". ~/ectf2025/.venv/bin/activate"
 
@@ -255,7 +254,7 @@ class AttackingJob(DistributionJob):
                     *target_files,
                     self.target_folder / "design/design",
                 ],
-                ATTACK_OUT_PATH,
+                TEST_OUT_PATH,
             )
         except subprocess.SubprocessError as e:
             self.on_error(e, f"[ATTACK] Failed to upload to {ip}")
@@ -342,7 +341,7 @@ class AttackScriptJob(DistributionJob):
                     self.target_folder / "design/design",
                     self.script_path,
                 ],
-                ATTACK_OUT_PATH,
+                TEST_OUT_PATH,
             )
         except subprocess.SubprocessError as e:
             self.on_error(e, f"[ATTACK] Failed to upload to {ip}")
