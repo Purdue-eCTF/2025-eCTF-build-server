@@ -367,6 +367,11 @@ class AttackScriptJob(DistributionJob):
 
         try:
             remote_script_path = Path(TEST_OUT_PATH) / self.script_path.name
+            command = (
+                f"python3 {remote_script_path}"
+                if remote_script_path.suffix == ".py"
+                else f"chmod +x {remote_script_path}; {remote_script_path}"
+            )
             output = subprocess.run(
                 [
                     "ssh",
@@ -377,7 +382,7 @@ class AttackScriptJob(DistributionJob):
                     "-o",
                     "StrictHostKeyChecking=accept-new",
                     ip,
-                    f"{VENV} || exit 1; chmod +x {remote_script_path}; {remote_script_path}",
+                    f"{VENV} || exit 1; {command}",
                 ],
                 timeout=60 * 10,
                 check=True,
