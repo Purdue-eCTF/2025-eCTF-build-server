@@ -108,22 +108,34 @@ class DistributionJob(Job):
             distribution_queue.task_done()
 
     def upload(self, ip: str, files: list[Path | str], out_path: str):
-        subprocess.run(
-            [
-                "rsync",
-                "--rsh=ssh -F ssh_config -i id_ed25519 -o StrictHostKeyChecking=accept-new",
-                "-av",
-                "--progress",
-                "--delete",
-                "--ignore-times",
-                *files,
-                f"{ip}:{out_path}",
-            ],
-            timeout=60 * 2,
-            check=True,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-        )
+        # auto-retry to work around PAL
+        max_retries = 3
+        for i in range(max_retries):
+            try:
+                subprocess.run(
+                    [
+                        "rsync",
+                        (
+                            "--rsh=ssh -F ssh_config -i id_ed25519 -o StrictHostKeyChecking=accept-new"
+                            " -o ServerAliveInterval=5 -o ServerAliveCountMax=1"
+                        ),
+                        "-av",
+                        "--partial",
+                        "--progress",
+                        "--delete",
+                        *files,
+                        f"{ip}:{out_path}",
+                    ],
+                    timeout=30,
+                    check=True,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE,
+                )
+            except subprocess.CalledProcessError as e:
+                if i == max_retries - 1:
+                    raise
+                if b"write error: Broken pipe" not in e.stderr:
+                    raise
 
     def cleanup(self):
         pass
