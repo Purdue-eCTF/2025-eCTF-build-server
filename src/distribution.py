@@ -6,6 +6,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from queue import Queue
 from socket import socket
+from typing import Literal
 
 from colors import blue, red
 from config import GITHUB_TOKEN, GITHUB_USERNAME, IPS
@@ -26,7 +27,7 @@ VENV = ". ~/ectf2025/.venv/bin/activate"
 class DistributionJob(Job):
     name: str
     in_path: str
-    queue_type: str
+    queue_type: Literal["ATTACK", "TEST"]
     attack_board: bool
     commit: CommitInfo | None = None
 
@@ -38,9 +39,9 @@ class DistributionJob(Job):
         }
 
     def distribute(self, ip: str):
-        self.status = "TESTING"
+        self.status = "UPLOADING"
         self.start_time = time.time()
-        push_webhook("TEST", self)
+        push_webhook(self.queue_type, self)
 
         firmware_file = Path(self.in_path).name
         try:
@@ -56,7 +57,7 @@ class DistributionJob(Job):
                     self.log(f"[DIST] {ip} is disconnected, changing servers")
 
                     self.status = "PENDING"
-                    push_webhook("TEST", self)
+                    push_webhook(self.queue_type, self)
 
                     upload_status[ip].connected = False
                     add_to_dist_queue(self)
@@ -64,7 +65,7 @@ class DistributionJob(Job):
                     self.on_error(e, f"[DIST] Failed to upload to {ip}")
 
                     self.status = "FAILED"
-                    push_webhook("TEST", self)
+                    push_webhook(self.queue_type, self)
                 return
 
             # flash binary
@@ -167,6 +168,9 @@ class TestingJob(DistributionJob):
         )
 
     def post_upload(self, ip: str):
+        self.status = "TESTING"
+        push_webhook("TEST", self)
+
         # run tests
         self.log(blue(f"[TEST] Running tests for {self.name}"))
 
@@ -251,6 +255,9 @@ class AttackingJob(DistributionJob):
         )
 
     def post_upload(self, ip: str):
+        self.status = "ATTACKING"
+        push_webhook("ATTACK", self)
+
         # upload attack data to server
         self.log(blue(f"[ATTACK] Uploading attack data to {ip}"))
 
@@ -337,6 +344,9 @@ class AttackScriptJob(DistributionJob):
         )
 
     def post_upload(self, ip: str):
+        self.status = "ATTACKING"
+        push_webhook("ATTACK", self)
+
         # upload attack data to server
         self.log(blue(f"[ATTACK] Uploading attack data to {ip}"))
 
