@@ -433,9 +433,7 @@ class AttackScriptJob(DistributionJob):
                     ip,
                     (
                         f"{VENV} || exit 1;"
-                        f"read -r IP CHANNEL_0_PORT CHANNEL_1_PORT CHANNEL_2_PORT CHANNEL_3_PORT CHANNEL_4_PORT < {TEST_OUT_PATH}/ports.txt;"
-                        "export IP CHANNEL_0_PORT CHANNEL_1_PORT CHANNEL_2_PORT CHANNEL_3_PORT CHANNEL_4_PORT;"
-                        f"export PYTHONPATH={CI_PATH}; cd {TEST_OUT_PATH}; {command}"
+                        f"cd {TEST_OUT_PATH}; . setup_attacks.sh; {command}"
                     ),
                 ],
                 timeout=60 * 10,
