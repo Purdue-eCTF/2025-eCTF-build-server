@@ -414,7 +414,8 @@ class AttackScriptJob(DistributionJob):
 
         try:
             remote_script_path = Path(TEST_OUT_PATH) / script_filename
-            quoted_script_path = shlex.quote(str(remote_script_path))
+            # ensure that ~ in TEST_OUT_PATH is still expanded
+            quoted_script_path = f"{TEST_OUT_PATH}/{shlex.quote(script_filename)}"
             command = (
                 f"python3 {quoted_script_path}"
                 if remote_script_path.suffix == ".py"
