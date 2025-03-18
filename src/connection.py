@@ -3,6 +3,7 @@ import socket
 import sys
 import time
 import traceback
+from urllib.parse import urlparse
 
 from builder import add_to_build_queue
 from colors import blue
@@ -11,7 +12,14 @@ from distribution import AttackingJob, AttackScriptJob, UpdateCIJob, add_to_dist
 from jobs import BuildJob, CommitInfo
 from webhook import push_webhook
 
-# create socket, interface with github
+
+# https://stackoverflow.com/a/52455972
+def is_url(url):
+    try:
+        result = urlparse(url)
+        return result.scheme.startswith("http") and result.netloc
+    except ValueError:
+        return False
 
 
 def serve():
@@ -72,18 +80,17 @@ def serve():
                     push_webhook()
                 elif method == "attack-script":
                     conn.sendall(b"[CONN] Attacking target with manual attack script\n")
-                    script_name, team = conn.recv(1024).decode("utf-8").split("|")
+                    team, script_url = conn.recv(1024).decode("utf-8").split("|")
 
-                    if "/" in script_name:
-                        print(f"[CONN] Invalid script name {script_name}")
-                        conn.sendall(
-                            f"[CONN] Invalid script name {script_name}\n".encode()
-                        )
+                    if not is_url(script_url):
+                        # not security critical, just a sanity check
+                        print(f"[CONN] Invalid script url {script_url}")
+                        conn.sendall(f"[CONN] Invalid script url {script_url}\n".encode())
                         conn.close()
                         continue
 
                     add_to_dist_queue(
-                        AttackScriptJob(conn, "PENDING", time.time(), team, script_name)
+                        AttackScriptJob(conn, "PENDING", time.time(), team, script_url)
                     )
                     push_webhook()
                 elif method == "update-ci":

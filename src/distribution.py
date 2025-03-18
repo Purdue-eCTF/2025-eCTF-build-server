@@ -1,5 +1,7 @@
+import re
 import shutil
 import subprocess
+import tempfile
 import threading
 import time
 from dataclasses import dataclass
@@ -7,6 +9,9 @@ from pathlib import Path
 from queue import Queue
 from socket import socket
 from typing import Literal
+from urllib.parse import urlparse
+
+import requests
 
 from colors import blue, red
 from config import GITHUB_TOKEN, GITHUB_USERNAME, IPS
@@ -326,11 +331,11 @@ class AttackScriptJob(DistributionJob):
         status: str,
         start_time: float,
         team: str,
-        script_name: str,
+        script_url: str,
     ):
         self.team = team
         self.target_folder = Path("~/mounts/targets/").expanduser() / team
-        self.script_path = Path("~/mounts/scripts/").expanduser() / script_name
+        self.script_url = script_url
         super().__init__(
             conn=conn,
             status=status,
@@ -351,20 +356,37 @@ class AttackScriptJob(DistributionJob):
         self.log(blue(f"[ATTACK] Uploading attack data to {ip}"))
 
         try:
-            target_files = [
-                p
-                for p in self.target_folder.iterdir()
-                if p.is_file() and p.suffix != ".prot"
-            ]
-            self.upload(
-                ip,
-                [
-                    *target_files,
-                    self.target_folder / "design/design",
-                    self.script_path,
-                ],
-                TEST_OUT_PATH,
-            )
+            resp = requests.get(self.script_url, stream=True)
+            resp.raise_for_status()
+
+            if "Content-Disposition" in resp.headers:
+                filename = re.findall(
+                    r"filename=(.+)", resp.headers["Content-Disposition"]
+                )[0]
+            else:
+                filename = urlparse(self.script_url).path.split("/")[-1]
+
+            if "/" in filename:
+                raise ValueError(f"Invalid filename {filename}")
+
+            with tempfile.TemporaryDirectory() as temp_dir:
+                script_path = Path(temp_dir).joinpath(filename)
+                with script_path.open("w") as f:
+                    shutil.copyfileobj(resp.raw, f)
+                target_files = [
+                    p
+                    for p in self.target_folder.iterdir()
+                    if p.is_file() and p.suffix != ".prot"
+                ]
+                self.upload(
+                    ip,
+                    [
+                        *target_files,
+                        self.target_folder / "design/design",
+                        script_path,
+                    ],
+                    TEST_OUT_PATH,
+                )
         except subprocess.SubprocessError as e:
             self.on_error(e, f"[ATTACK] Failed to upload to {ip}")
 
@@ -376,7 +398,7 @@ class AttackScriptJob(DistributionJob):
         self.log(blue(f"[ATTACK] Running attack script for {self.name} on {ip}"))
 
         try:
-            remote_script_path = Path(TEST_OUT_PATH) / self.script_path.name
+            remote_script_path = Path(TEST_OUT_PATH) / script_path.name
             command = (
                 f"python3 {remote_script_path}"
                 if remote_script_path.suffix == ".py"

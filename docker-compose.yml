@@ -14,7 +14,6 @@ services:
             - build_out:/root/mounts/build_out
             - secrets:/root/mounts/secrets
             - ../scrape-bot/temp:/root/mounts/targets
-            - ../scrape-bot/scripts:/root/mounts/scripts
 volumes:
     decoder:
     build_out:
