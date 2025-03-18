@@ -433,7 +433,7 @@ class AttackScriptJob(DistributionJob):
                     ip,
                     (
                         f"{VENV} || exit 1;"
-                        f"cd {TEST_OUT_PATH}; . setup_attacks.sh; {command}"
+                        f"cd {TEST_OUT_PATH}; . {CI_PATH}/setup_attacks.sh; {command}"
                     ),
                 ],
                 timeout=60 * 10,
