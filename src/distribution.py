@@ -366,12 +366,7 @@ class AttackScriptJob(DistributionJob):
                 push_webhook("ATTACK", self)
                 return
 
-            if "Content-Disposition" in resp.headers:
-                script_filename = re.findall(
-                    r"filename=(.+)", resp.headers["Content-Disposition"]
-                )[0]
-            else:
-                script_filename = urlparse(self.script_url).path.split("/")[-1]
+            script_filename = urlparse(self.script_url).path.split("/")[-1]
 
             if "/" in script_filename:
                 self.log(red(f"[ATTACK] Invalid filename {script_filename}"))
