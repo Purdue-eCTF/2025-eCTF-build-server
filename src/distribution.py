@@ -436,7 +436,7 @@ class AttackScriptJob(DistributionJob):
                     ip,
                     (
                         f"{VENV} || exit 1;"
-                        "read -r IP CHANNEL_0_PORT CHANNEL_1_PORT CHANNEL_2_PORT CHANNEL_3_PORT CHANNEL_4_PORT < ../test_out/ports.txt;"
+                        f"read -r IP CHANNEL_0_PORT CHANNEL_1_PORT CHANNEL_2_PORT CHANNEL_3_PORT CHANNEL_4_PORT < {TEST_OUT_PATH}/ports.txt;"
                         "export IP CHANNEL_0_PORT CHANNEL_1_PORT CHANNEL_2_PORT CHANNEL_3_PORT CHANNEL_4_PORT;"
                         f"export PYTHONPATH={CI_PATH}; {command}"
                     ),
