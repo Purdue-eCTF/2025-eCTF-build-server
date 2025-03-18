@@ -1,4 +1,4 @@
-import re
+import shlex
 import shutil
 import subprocess
 import tempfile
@@ -414,10 +414,11 @@ class AttackScriptJob(DistributionJob):
 
         try:
             remote_script_path = Path(TEST_OUT_PATH) / script_filename
+            quoted_script_path = shlex.quote(str(remote_script_path))
             command = (
-                f"python3 {remote_script_path}"
+                f"python3 {quoted_script_path}"
                 if remote_script_path.suffix == ".py"
-                else f"chmod +x {remote_script_path}; {remote_script_path}"
+                else f"chmod +x {quoted_script_path}; {quoted_script_path}"
             )
             output = subprocess.run(
                 [
@@ -433,7 +434,7 @@ class AttackScriptJob(DistributionJob):
                         f"{VENV} || exit 1;"
                         f"read -r IP CHANNEL_0_PORT CHANNEL_1_PORT CHANNEL_2_PORT CHANNEL_3_PORT CHANNEL_4_PORT < {TEST_OUT_PATH}/ports.txt;"
                         "export IP CHANNEL_0_PORT CHANNEL_1_PORT CHANNEL_2_PORT CHANNEL_3_PORT CHANNEL_4_PORT;"
-                        f"export PYTHONPATH={CI_PATH}; {command}"
+                        f"export PYTHONPATH={CI_PATH}; cd {TEST_OUT_PATH}; {command}"
                     ),
                 ],
                 timeout=60 * 10,
