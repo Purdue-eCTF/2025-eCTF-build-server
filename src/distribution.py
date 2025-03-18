@@ -352,27 +352,47 @@ class AttackScriptJob(DistributionJob):
         self.status = "ATTACKING"
         push_webhook("ATTACK", self)
 
+        # download attack script
+        self.log(blue("[ATTACK] Downloading attack script"))
+        try:
+            resp = requests.get(self.script_url, timeout=5)
+            if not resp.ok:
+                self.log(
+                    red(
+                        f"[ATTACK] Fetching {self.script_url} returned {resp.status_code}"
+                    )
+                )
+                self.status = "FAILED"
+                push_webhook("ATTACK", self)
+                return
+
+            if "Content-Disposition" in resp.headers:
+                script_filename = re.findall(
+                    r"filename=(.+)", resp.headers["Content-Disposition"]
+                )[0]
+            else:
+                script_filename = urlparse(self.script_url).path.split("/")[-1]
+
+            if "/" in script_filename:
+                self.log(red(f"[ATTACK] Invalid filename {script_filename}"))
+                self.status = "FAILED"
+                push_webhook("ATTACK", self)
+                return
+        except requests.Timeout as e:
+            self.on_error(e, f"[ATTACK] Failed to upload to {ip}")
+
+            self.status = "FAILED"
+            push_webhook("ATTACK", self)
+            return
+
         # upload attack data to server
         self.log(blue(f"[ATTACK] Uploading attack data to {ip}"))
 
         try:
-            resp = requests.get(self.script_url, stream=True)
-            resp.raise_for_status()
-
-            if "Content-Disposition" in resp.headers:
-                filename = re.findall(
-                    r"filename=(.+)", resp.headers["Content-Disposition"]
-                )[0]
-            else:
-                filename = urlparse(self.script_url).path.split("/")[-1]
-
-            if "/" in filename:
-                raise ValueError(f"Invalid filename {filename}")
-
             with tempfile.TemporaryDirectory() as temp_dir:
-                script_path = Path(temp_dir).joinpath(filename)
+                script_path = Path(temp_dir) / script_filename
                 with script_path.open("w") as f:
-                    shutil.copyfileobj(resp.raw, f)
+                    f.write(resp.text)
                 target_files = [
                     p
                     for p in self.target_folder.iterdir()
@@ -398,7 +418,7 @@ class AttackScriptJob(DistributionJob):
         self.log(blue(f"[ATTACK] Running attack script for {self.name} on {ip}"))
 
         try:
-            remote_script_path = Path(TEST_OUT_PATH) / script_path.name
+            remote_script_path = Path(TEST_OUT_PATH) / script_filename
             command = (
                 f"python3 {remote_script_path}"
                 if remote_script_path.suffix == ".py"
