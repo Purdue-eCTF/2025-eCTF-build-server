@@ -458,17 +458,6 @@ class AttackScriptJob(DistributionJob):
         push_webhook("ATTACK", self)
 
 
-def distribution_loop():
-    while True:
-        req = distribution_queue.get()
-        avail_ip = server_queues[req.queue_type].get()
-        req.status = "TESTING"
-        req.start_time = time.time()
-        upload_status[avail_ip].job = req
-        push_webhook()
-        threading.Thread(target=req.distribute, args=(avail_ip,), daemon=True).start()
-
-
 class UpdateCIJob(Job):
     def __init__(self, conn, status, start_time):
         super().__init__(conn, status, start_time, socket_colors=True)
@@ -495,7 +484,8 @@ class UpdateCIJob(Job):
                             ip,
                             f"cd {CI_PATH} && "
                             f"GITHUB_USERNAME={GITHUB_USERNAME} GITHUB_TOKEN={GITHUB_TOKEN} "
-                            f"GIT_ASKPASS={CI_PATH}/git-askpass.sh git pull --ff-only origin main",
+                            f"GIT_ASKPASS={CI_PATH}/git-askpass.sh "
+                            "git pull --recurse-submodules --ff-only origin main",
                         ],
                         timeout=60 * 2,
                         check=True,
@@ -527,6 +517,17 @@ class UploadServerStatus:
 
     def is_avail(self):
         return self.connected and (not self.job or self.job.status != "TESTING")
+
+
+def distribution_loop():
+    while True:
+        req = distribution_queue.get()
+        avail_ip = server_queues[req.queue_type].get()
+        req.status = "TESTING"
+        req.start_time = time.time()
+        upload_status[avail_ip].job = req
+        push_webhook()
+        threading.Thread(target=req.distribute, args=(avail_ip,), daemon=True).start()
 
 
 def add_to_dist_queue(job: DistributionJob):
