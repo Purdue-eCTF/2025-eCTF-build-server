@@ -99,7 +99,7 @@ class DistributionJob(Job):
                 self.on_error(e, f"[DIST] Failed to flash on {ip}")
 
                 self.status = "FAILED"
-                push_webhook("TEST", self)
+                push_webhook(self.queue_type, self)
                 return
 
             self.log(blue("[DIST] Flashed!"))
